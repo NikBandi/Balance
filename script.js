@@ -653,13 +653,78 @@ function draw() {
 }
 
 let audioCtx;
+let bgMusicNode = null;
+let bgMusicGain = null;
+let bgMusicStarted = false;
+
 function initAudio() {
     if (!audioCtx) audioCtx = new (AudioContext || webkitAudioContext)();
     if (audioCtx.state === 'suspended') audioCtx.resume();
 }
+
 function unlockAudio() {
     initAudio();
     if (audioCtx.state === 'suspended') audioCtx.resume();
+    startBgMusic();
+}
+
+function startBgMusic() {
+    if (!audioCtx || bgMusicStarted) return;
+    bgMusicStarted = true;
+    const muted = localStorage.getItem('musicMuted') === '1';
+
+    const sr = audioCtx.sampleRate;
+    const duration = 8;
+    const len = Math.floor(sr * duration);
+    const buf = audioCtx.createBuffer(1, len, sr);
+    const data = buf.getChannelData(0);
+
+    const chords = [
+        [261.63, 329.63, 392],           // C major
+        [220, 261.63, 329.63],          // Am
+        [174.61, 220, 261.63],          // F
+        [196, 246.94, 293.66]           // G
+    ];
+    const beatLen = Math.floor(len / 4);
+
+    for (let i = 0; i < len; i++) {
+        const chordIdx = Math.floor(i / beatLen) % 4;
+        const chord = chords[chordIdx];
+        const t = i / sr;
+        let sample = 0;
+        chord.forEach((freq, j) => {
+            sample += Math.sin(2 * Math.PI * freq * t) * (0.6 / chord.length);
+        });
+        const env = Math.sin((i / len) * Math.PI) * 0.5 + 0.5;
+        const fade = i < sr * 0.5 ? i / (sr * 0.5) : (i > len - sr * 0.5 ? (len - i) / (sr * 0.5) : 1);
+        data[i] = sample * env * fade * 0.12;
+    }
+
+    const src = audioCtx.createBufferSource();
+    src.buffer = buf;
+    src.loop = true;
+
+    bgMusicGain = audioCtx.createGain();
+    bgMusicGain.gain.value = muted ? 0 : 0.25;
+    src.connect(bgMusicGain);
+    lofiChain(bgMusicGain);
+
+    src.start(0);
+    bgMusicNode = src;
+}
+
+function toggleBgMusic() {
+    const isMuted = localStorage.getItem('musicMuted') === '1';
+    localStorage.setItem('musicMuted', isMuted ? '0' : '1');
+    if (bgMusicGain) {
+        bgMusicGain.gain.value = isMuted ? 0.25 : 0;
+    }
+    updateMusicBtn();
+}
+
+function updateMusicBtn() {
+    const btn = document.getElementById('music-btn');
+    if (btn) btn.textContent = localStorage.getItem('musicMuted') === '1' ? '🔇 Music' : '🎵 Music';
 }
 
 function lofiChain(node) {
@@ -1005,6 +1070,9 @@ document.getElementById('shop').addEventListener('click', e => { if (e.target.id
 document.getElementById('instructions-btn').addEventListener('click', () => { unlockAudio(); document.getElementById('instructions-overlay').classList.add('show'); });
 document.getElementById('close-instructions').addEventListener('click', () => closeOverlay('instructions-overlay'));
 document.getElementById('instructions-overlay').addEventListener('click', e => { if (e.target.id === 'instructions-overlay') closeOverlay('instructions-overlay'); });
+
+document.getElementById('music-btn').addEventListener('click', () => { unlockAudio(); toggleBgMusic(); });
+updateMusicBtn();
 
 // Auto income
 setInterval(() => {

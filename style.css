@@ -255,8 +255,11 @@ body {
     background: #2d1b3d;
     border: 2px solid rgba(232,213,183,.3);
     border-radius: 16px;
-    max-width: 320px;
+    max-width: 380px;
     width: 90%;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
 }
 
 #instructions-panel h3 {
@@ -267,11 +270,31 @@ body {
     text-align: center;
 }
 
+.instructions-content {
+    overflow-y: auto;
+    flex: 1;
+    margin-bottom: 16px;
+}
+
 #instructions-panel p {
     color: #e8dfd0;
     font-size: 13px;
-    line-height: 1.5;
-    margin-bottom: 16px;
+    line-height: 1.6;
+    margin-bottom: 12px;
+}
+
+#instructions-panel p:last-child {
+    margin-bottom: 0;
+}
+
+#instructions-panel strong {
+    color: #ffd166;
+    font-weight: 600;
+}
+
+#instructions-panel em {
+    color: #ffd166;
+    font-style: normal;
 }
 
 #close-instructions {
