@@ -35,21 +35,21 @@ body {
     position: absolute;
     font-size: clamp(18px, 3vw, 28px);
     opacity: 0.5;
-    animation: leafFloat 15s linear infinite;
+    animation: var(--anim, leafFloat) var(--dur, 15s) linear var(--delay, 0s) infinite var(--dir, normal);
 }
-
-.leaf:nth-child(1) { top: 10%; animation-duration: 18s; animation-delay: 0s; animation-direction: normal; }
-.leaf:nth-child(2) { top: 25%; animation-duration: 22s; animation-delay: -4s; animation-direction: reverse; }
-.leaf:nth-child(3) { top: 45%; animation-duration: 16s; animation-delay: -2s; animation-direction: normal; }
-.leaf:nth-child(4) { top: 60%; animation-duration: 20s; animation-delay: -7s; animation-direction: reverse; }
-.leaf:nth-child(5) { top: 75%; animation-duration: 19s; animation-delay: -1s; animation-direction: normal; }
-.leaf:nth-child(6) { top: 88%; animation-duration: 24s; animation-delay: -10s; animation-direction: reverse; }
-.leaf:nth-child(7) { top: 18%; animation-duration: 21s; animation-delay: -5s; animation-direction: reverse; }
-.leaf:nth-child(8) { top: 35%; animation-duration: 17s; animation-delay: -8s; animation-direction: normal; }
-.leaf:nth-child(9) { top: 52%; animation-duration: 23s; animation-delay: -3s; animation-direction: reverse; }
-.leaf:nth-child(10) { top: 68%; animation-duration: 15s; animation-delay: -6s; animation-direction: normal; }
-.leaf:nth-child(11) { top: 82%; animation-duration: 20s; animation-delay: -12s; animation-direction: reverse; }
-.leaf:nth-child(12) { top: 5%; animation-duration: 26s; animation-delay: -9s; animation-direction: normal; }
+.leaf:nth-child(even) { --anim: leafFloatReverse; }
+.leaf:nth-child(1) { top: 10%; --dur: 18s; --delay: 0s; --dir: normal; }
+.leaf:nth-child(2) { top: 25%; --dur: 22s; --delay: -4s; --dir: reverse; }
+.leaf:nth-child(3) { top: 45%; --dur: 16s; --delay: -2s; --dir: normal; }
+.leaf:nth-child(4) { top: 60%; --dur: 20s; --delay: -7s; --dir: reverse; }
+.leaf:nth-child(5) { top: 75%; --dur: 19s; --delay: -1s; --dir: normal; }
+.leaf:nth-child(6) { top: 88%; --dur: 24s; --delay: -10s; --dir: reverse; }
+.leaf:nth-child(7) { top: 18%; --dur: 21s; --delay: -5s; --dir: reverse; }
+.leaf:nth-child(8) { top: 35%; --dur: 17s; --delay: -8s; --dir: normal; }
+.leaf:nth-child(9) { top: 52%; --dur: 23s; --delay: -3s; --dir: reverse; }
+.leaf:nth-child(10) { top: 68%; --dur: 15s; --delay: -6s; --dir: normal; }
+.leaf:nth-child(11) { top: 82%; --dur: 20s; --delay: -12s; --dir: reverse; }
+.leaf:nth-child(12) { top: 5%; --dur: 26s; --delay: -9s; --dir: normal; }
 
 @keyframes leafFloat {
     0% { left: -25%; transform: translateY(0) rotate(0deg); }
@@ -247,23 +247,8 @@ body {
     100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
 }
 
-#instructions-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,.8);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 100;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity .3s ease;
-}
-
-#instructions-overlay.show {
-    opacity: 1;
-    pointer-events: auto;
-}
+.overlay { position: fixed; inset: 0; background: rgba(0,0,0,.8); display: flex; align-items: center; justify-content: center; z-index: 100; opacity: 0; pointer-events: none; transition: opacity .3s ease; }
+.overlay.show { opacity: 1; pointer-events: auto; }
 
 #instructions-panel {
     padding: 20px;
@@ -381,26 +366,6 @@ button:disabled {
     cursor: not-allowed;
 }
 
-#shop {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,.8);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 100;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity .3s ease;
-}
-
-#shop.show {
-    opacity: 1;
-    pointer-events: auto;
-}
 
 #shop.show.just-opened #shop-content {
     animation: shopSlideIn .4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;

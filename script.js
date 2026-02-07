@@ -1,5 +1,3 @@
-// @ts-nocheck
-// Canvas setup
 const c = document.getElementById('c');
 const ctx = c.getContext('2d');
 function resizeCanvas() {
@@ -12,15 +10,19 @@ function resizeCanvas() {
 resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
 const w = c.width;
+function canvasCoords(ev) {
+    let r = c.getBoundingClientRect();
+    let t = ev.touches ? ev.touches[0] : ev;
+    return { x: t.clientX - r.left, y: t.clientY - r.top };
+}
+function closeOverlay(id) { document.getElementById(id).classList.remove('show'); }
 const h = c.height;
 
-// Game state
 let score = 0;
 let coins = 0;
 let streak = 0;
 let totalSlices = 0;
 let perfectSlices = 0;
-let soundOn = true;
 let currentFood = null;
 let slicing = false;
 let sliceStart = null;
@@ -30,7 +32,6 @@ let coinPopups = [];
 let time = 0;
 let perfectEffect = { active: false, x: 0, y: 0, t: 0 };
 
-// Upgrades
 let upgrades = {
     mult1: false,
     mult2: false,
@@ -55,7 +56,6 @@ function getRebirthMultiplier() {
     return Math.pow(2, rebirthCount);
 }
 
-// Food definitions
 const foods = [
     {name: 'bread', shape: 0, c1: '#deb887', c2: '#f5deb3', c3: '#8b7355', w: 140, h: 90},
     {name: 'baguette', shape: 1, c1: '#d4a574', c2: '#f5deb3', c3: '#8b6914', w: 200, h: 60},
@@ -64,12 +64,9 @@ const foods = [
     {name: 'cheese', shape: 4, c1: '#f4d03f', c2: '#f9e79f', c3: '#d4ac0d', w: 140, h: 120},
     {name: 'cake', shape: 0, c1: '#ffb6c1', c2: '#fff0f5', c3: '#ff69b4', w: 120, h: 100},
     {name: 'carrot', shape: 5, c1: '#ff7f27', c2: '#ffa500', c3: '#228b22', w: 50, h: 140},
-    {name: 'fish', shape: 6, c1: '#87ceeb', c2: '#ffb6c1', c3: '#4682b4', w: 160, h: 80},
-    {name: 'donut', shape: 3, c1: '#ff9ff3', c2: '#ffeaa7', c3: '#ff1493', r: 85},
-    {name: 'avocado', shape: 1, c1: '#6b8e23', c2: '#d4e157', c3: '#8b4513', w: 90, h: 120}
+    {name: 'fish', shape: 6, c1: '#87ceeb', c2: '#ffb6c1', c3: '#4682b4', w: 160, h: 80}
 ];
 
-// Shop items
 const shopItems = {
     upgrades: [
         {id: 'mult1', name: 'Sharp Knife', desc: '2x score', cost: 100, mult: 2},
@@ -77,9 +74,9 @@ const shopItems = {
         {id: 'mult3', name: 'Laser Cutter', desc: '5x score', cost: 2000, mult: 5, req: 'mult2'}
     ],
     abilities: [
-        {id: 'auto', name: 'Auto Slice', desc: 'Doubles coins/sec each level', cost: 300, levelable: true},
+        {id: 'auto', name: 'Auto Slice', desc: '2x coins/sec/level', cost: 300, levelable: true},
         {id: 'lucky', name: 'Lucky Cuts', desc: '20% 2x coins', cost: 800},
-        {id: 'golden', name: 'Golden Touch', desc: 'Rare golden 10x', cost: 1500}
+        {id: 'golden', name: 'Golden Touch', desc: 'Rare 10x', cost: 1500}
     ],
     cosmetics: [
         {id: 'rainbow', name: 'Rainbow Trail', desc: 'Color trail', cost: 250},
@@ -88,11 +85,10 @@ const shopItems = {
     ],
     special: [
         {id: 'scotty', name: 'Scotty', desc: '+10 coins/sec', cost: 1000, saleCost: 500, emoji: '🐕'},
-        {id: 'rebirth', name: 'Rebirth', desc: 'Reset score for permanent 2x multiplier', cost: 0, rebirth: true, emoji: '✨'}
+        {id: 'rebirth', name: 'Rebirth', desc: 'Reset for 2x mult', cost: 0, rebirth: true, emoji: '✨'}
     ]
 };
 
-// Food class
 class Food {
     constructor() {
         let f = foods[Math.floor(Math.random() * foods.length)];
@@ -179,7 +175,7 @@ class Food {
             
             if (this.golden) {
                 ctx.fillStyle = 'rgba(255,215,0,.3)';
-                ctx.font = '600 20px Outfit, system-ui, sans-serif';
+                ctx.font = '600 20px system-ui,sans-serif';
                 ctx.textAlign = 'center';
                 ctx.fillText('★', 0, 10);
             }
@@ -217,50 +213,37 @@ class Food {
     }
     
     drawShape() {
+        const roundRect = (x, y, w, h, r) => {
+            ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y);
+            ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+            ctx.lineTo(x + w, y + h - r);
+            ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+            ctx.lineTo(x + r, y + h);
+            ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+            ctx.lineTo(x, y + r);
+            ctx.quadraticCurveTo(x, y, x + r, y);
+        };
         if (this.shape === 0) {
-            if (this.name === 'bread') {
-                ctx.fillStyle = this.c2;
-                let r = 8, x = -this.w/2, y = -this.h/2;
+            if (this.name === 'bread' || this.name === 'cake') {
+                let r = this.name === 'bread' ? 8 : 6, x = -this.w/2, y = -this.h/2;
+                ctx.fillStyle = this.name === 'bread' ? this.c2 : this.c1;
                 ctx.beginPath();
-                ctx.moveTo(x + r, y); ctx.lineTo(x + this.w - r, y);
-                ctx.quadraticCurveTo(x + this.w, y, x + this.w, y + r);
-                ctx.lineTo(x + this.w, y + this.h - r);
-                ctx.quadraticCurveTo(x + this.w, y + this.h, x + this.w - r, y + this.h);
-                ctx.lineTo(x + r, y + this.h);
-                ctx.quadraticCurveTo(x, y + this.h, x, y + this.h - r);
-                ctx.lineTo(x, y + r);
-                ctx.quadraticCurveTo(x, y, x + r, y);
+                roundRect(x, y, this.w, this.h, r);
                 ctx.fill();
-                ctx.strokeStyle = this.c3;
-                ctx.lineWidth = 2;
-                ctx.stroke();
-                ctx.fillStyle = 'rgba(139,115,85,0.1)';
-                let stripW = 22, stripH = 2, gap = 30;
-                for (let i = 0; i < 4; i++) {
-                    let sx = -this.w/2 + 18 + i * gap;
-                    ctx.fillRect(sx, -this.h/2 + 10, stripW, stripH);
+                if (this.name === 'bread') {
+                    ctx.strokeStyle = this.c3;
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                } else {
+                    ctx.fillStyle = this.c3;
+                    ctx.beginPath();
+                    ctx.ellipse(0, -this.h/2 - 2, this.w/2 + 4, 10, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#ff69b4';
+                    ctx.beginPath();
+                    ctx.arc(0, -this.h/2 - 5, 8, 0, Math.PI * 2);
+                    ctx.fill();
                 }
-            } else if (this.name === 'cake') {
-                ctx.fillStyle = this.c1;
-                let r = 6, x = -this.w/2, y = -this.h/2;
-                ctx.beginPath();
-                ctx.moveTo(x + r, y); ctx.lineTo(x + this.w - r, y);
-                ctx.quadraticCurveTo(x + this.w, y, x + this.w, y + r);
-                ctx.lineTo(x + this.w, y + this.h - r);
-                ctx.quadraticCurveTo(x + this.w, y + this.h, x + this.w - r, y + this.h);
-                ctx.lineTo(x + r, y + this.h);
-                ctx.quadraticCurveTo(x, y + this.h, x, y + this.h - r);
-                ctx.lineTo(x, y + r);
-                ctx.quadraticCurveTo(x, y, x + r, y);
-                ctx.fill();
-                ctx.fillStyle = this.c3;
-                ctx.beginPath();
-                ctx.ellipse(0, -this.h/2 - 2, this.w/2 + 4, 10, 0, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.fillStyle = '#ff69b4';
-                ctx.beginPath();
-                ctx.arc(0, -this.h/2 - 5, 8, 0, Math.PI * 2);
-                ctx.fill();
             } else {
                 ctx.fillStyle = this.c1;
                 ctx.fillRect(-this.w/2, -this.h/2, this.w, this.h);
@@ -282,15 +265,6 @@ class Food {
                     ctx.lineTo(this.w/2 - 10, i * 12);
                     ctx.stroke();
                 }
-            } else if (this.name === 'avocado') {
-                ctx.fillStyle = this.c1;
-                ctx.beginPath();
-                ctx.ellipse(0, 0, this.w/2, this.h/2, 0, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.fillStyle = 'rgba(255,255,255,0.3)';
-                ctx.beginPath();
-                ctx.arc(-12, -18, 12, 0, Math.PI * 2);
-                ctx.fill();
             }
             ctx.strokeStyle = this.c3;
             ctx.lineWidth = 2;
@@ -313,27 +287,17 @@ class Food {
                 ctx.beginPath();
                 ctx.arc(0, 0, this.r, 0, Math.PI * 2);
                 ctx.fill();
-                for (let i = 0; i < 14; i++) {
+                for (let i = 0; i < 8; i++) {
                     ctx.fillStyle = i % 2 ? '#2d5016' : '#4a7c23';
                     ctx.beginPath();
                     ctx.moveTo(0, 0);
-                    ctx.arc(0, 0, this.r, (i - 0.5) * Math.PI / 7, (i + 0.5) * Math.PI / 7);
+                    ctx.arc(0, 0, this.r, (i - 0.5) * Math.PI / 4, (i + 0.5) * Math.PI / 4);
                     ctx.closePath();
                     ctx.fill();
                 }
                 ctx.fillStyle = this.c2;
                 ctx.beginPath();
                 ctx.arc(0, 0, this.r * 0.78, 0, Math.PI * 2);
-                ctx.fill();
-            } else if (this.name === 'donut') {
-                ctx.fillStyle = this.c1;
-                ctx.beginPath();
-                ctx.arc(0, 0, this.r, 0, Math.PI * 2);
-                ctx.arc(0, 0, this.r * 0.35, 0, Math.PI * 2, true);
-                ctx.fill('evenodd');
-                ctx.fillStyle = this.c3;
-                ctx.beginPath();
-                ctx.ellipse(-this.r*0.5, -this.r*0.3, 8, 12, 0.3, 0, Math.PI * 2);
                 ctx.fill();
             } else {
                 ctx.fillStyle = this.c1;
@@ -353,10 +317,7 @@ class Food {
                 ctx.strokeStyle = 'rgba(212,172,13,0.5)';
                 ctx.lineWidth = 1.5;
                 ctx.stroke();
-                let holes = [
-                    [-22, 8, 10], [-18, -18, 8], [20, -12, 9], [15, 22, 7],
-                    [-5, 5, 6], [28, 8, 5], [-28, -8, 6]
-                ];
+                let holes = [[-22, 8, 10], [20, -12, 9], [-5, 5, 6]];
                 for (let [hx, hy, hr] of holes) {
                     ctx.fillStyle = 'rgba(212,172,13,0.35)';
                     ctx.beginPath();
@@ -436,16 +397,9 @@ class Food {
             ctx.arc(0, sliceY, 20, 0, Math.PI * 2);
             ctx.fill();
         }
-        if (this.name === 'avocado' && sliceY > -25 && sliceY < 25) {
-            ctx.fillStyle = this.c3;
-            ctx.beginPath();
-            ctx.arc(0, sliceY, 18, 0, Math.PI * 2);
-            ctx.fill();
-        }
     }
 }
 
-// Particle class - subtle, satisfying burst
 class Particle {
     constructor(x, y, color) {
         this.x = x;
@@ -479,7 +433,6 @@ class Particle {
     }
 }
 
-// Coin popup: rises up, then falls
 class CoinPopup {
     constructor(x, y, amount, lucky) {
         this.x = x;
@@ -489,7 +442,6 @@ class CoinPopup {
         this.vy = -8;
         this.life = 1;
         this.decay = 0.022;
-        this.phase = Math.random() * Math.PI * 2;
     }
     update() {
         this.vy += 0.4;
@@ -499,9 +451,8 @@ class CoinPopup {
     }
     draw() {
         ctx.save();
-        let flicker = 0.92 + 0.08 * Math.sin(time * 12 + this.phase) * Math.sin(time * 4.7 + this.phase * 0.7);
-        ctx.globalAlpha = Math.max(0, this.life * flicker);
-        ctx.font = '600 18px Outfit, system-ui, sans-serif';
+        ctx.globalAlpha = this.life;
+        ctx.font = '600 18px system-ui,sans-serif';
         ctx.textAlign = 'center';
         if (this.lucky) {
             let hue = (time * 200) % 360;
@@ -521,7 +472,6 @@ class CoinPopup {
     }
 }
 
-// Game functions
 function spawnFood() {
     currentFood = new Food();
 }
@@ -548,53 +498,37 @@ function calculateSlice(y, sliceMidX, sliceMidY) {
     showCutPopup(currentFood.leftPercent + '% / ' + currentFood.rightPercent + '%');
 
     let diff = Math.abs(50 - currentFood.rightPercent);
-    let points = 0;
-    let coinEarn = 0;
+    const tiers = [
+        [0, 100, 10, 'perfect', 1, 1],
+        [2, 50, 5, 'good', 1, 0],
+        [5, 25, 3, 'okay', 1, 0],
+        [10, 10, 1, 'okay', 0.5, 0],
+        [99, 5, 1, 'bad', 0, 0]
+    ];
+    let tier = tiers.find(([d]) => diff <= d) || tiers[4];
+    let [, points, coinEarn, sound, streakMult, perfect] = tier;
     
     let effX = sliceMidX != null ? sliceMidX : currentFood.x;
     let effY = sliceMidY != null ? sliceMidY : currentFood.y + relY;
     
     playWhoosh();
-    if (diff === 0) {
-        points = 100;
-        coinEarn = 10;
+    if (perfect) {
         perfectSlices++;
         streak++;
         document.getElementById('pf').classList.add('show');
-        setTimeout(() => document.getElementById('pf').classList.remove('show'), 1000);
+        setTimeout(() => closeOverlay('pf'), 1000);
         playCutSound('perfect');
         perfectEffect = { active: true, x: effX, y: effY, t: 0 };
-        for (let i = 0; i < 24; i++) {
-            let a = (i / 24) * Math.PI * 2;
-            let px = effX + Math.cos(a) * 25;
-            let py = effY + Math.sin(a) * 25;
-            let p = new Particle(px, py, '#ffd700');
-            p.vx = Math.cos(a) * 8;
-            p.vy = Math.sin(a) * 8 - 3;
-            p.size = 3 + Math.random() * 4;
-            p.decay = 0.02;
+        for (let i = 0; i < 12; i++) {
+            let a = (i / 12) * Math.PI * 2;
+            let p = new Particle(effX + Math.cos(a) * 25, effY + Math.sin(a) * 25, '#ffd700');
+            p.vx = Math.cos(a) * 8; p.vy = Math.sin(a) * 8 - 3;
+            p.size = 3 + Math.random() * 4; p.decay = 0.02;
             particles.push(p);
         }
-    } else if (diff <= 2) {
-        points = 50;
-        coinEarn = 5;
-        streak++;
-        playCutSound('good');
-    } else if (diff <= 5) {
-        points = 25;
-        coinEarn = 3;
-        streak++;
-        playCutSound('okay');
-    } else if (diff <= 10) {
-        points = 10;
-        coinEarn = 1;
-        streak = Math.floor(streak / 2);
-        playCutSound('okay');
     } else {
-        points = 5;
-        coinEarn = 1;
-        streak = 0;
-        playCutSound('bad');
+        streak = streakMult === 0 ? 0 : (streakMult === 0.5 ? Math.floor(streak / 2) : streak + 1);
+        playCutSound(sound);
     }
     
     points *= scoreMultiplier * getRebirthMultiplier();
@@ -611,7 +545,6 @@ function calculateSlice(y, sliceMidX, sliceMidY) {
     coins += coinEarn;
     totalSlices++;
     updateUI();
-    showCoinsGain(coinEarn, lucky);
     
     let popX = effX;
     let popY = effY - 20;
@@ -625,29 +558,26 @@ function calculateSlice(y, sliceMidX, sliceMidY) {
     }
 }
 
-let cutPopupTimer;
-let coinsGainTimer;
-function showCoinsGain(amount, lucky) {
-    let el = document.getElementById('coins-gain');
-    el.textContent = '+' + amount;
+let popupTimers = {};
+function showTimedPopup(id, text, ms, lucky) {
+    let el = document.getElementById(id);
+    if (text != null) el.textContent = text;
     el.classList.remove('show', 'lucky');
     el.offsetHeight;
     if (lucky) el.classList.add('lucky');
     el.classList.add('show');
-    clearTimeout(coinsGainTimer);
-    coinsGainTimer = setTimeout(() => el.classList.remove('show'), 600);
+    clearTimeout(popupTimers[id]);
+    popupTimers[id] = setTimeout(() => el.classList.remove('show'), ms);
 }
-function showCutPopup(text) {
-    let el = document.getElementById('cut-popup');
-    el.textContent = text;
-    el.classList.add('show');
-    clearTimeout(cutPopupTimer);
-    cutPopupTimer = setTimeout(() => el.classList.remove('show'), 1800);
-}
+function showCutPopup(text) { showTimedPopup('cut-popup', text, 1800); }
 
+let lastCoins = -1;
 function updateUI() {
     document.getElementById('s').textContent = '✂ ' + score;
-    document.getElementById('coins').textContent = '💰 ' + coins + ' coins';
+    if (coins !== lastCoins) {
+        document.getElementById('coins').textContent = '💰 ' + coins + ' coins';
+        lastCoins = coins;
+    }
     
     let accuracy = totalSlices > 0 ? Math.round((perfectSlices / totalSlices) * 100) : 100;
     let label = 'Perfect';
@@ -701,29 +631,15 @@ function draw() {
     }
     
     if (slicing && sliceStart && sliceEnd) {
-        let gradient;
-        
-        if (upgrades.rainbow) {
-            gradient = ctx.createLinearGradient(sliceStart.x, sliceStart.y, sliceEnd.x, sliceEnd.y);
-            gradient.addColorStop(0, 'rgba(255,0,255,.5)');
-            gradient.addColorStop(0.5, 'rgba(0,255,255,.8)');
-            gradient.addColorStop(1, 'rgba(255,255,0,.5)');
-        } else if (upgrades.trail) {
-            gradient = ctx.createLinearGradient(sliceStart.x, sliceStart.y, sliceEnd.x, sliceEnd.y);
-            gradient.addColorStop(0, 'rgba(255,215,0,0)');
-            gradient.addColorStop(0.5, 'rgba(255,215,0,.9)');
-            gradient.addColorStop(1, 'rgba(255,215,0,0)');
-        } else {
-            gradient = ctx.createLinearGradient(sliceStart.x, sliceStart.y, sliceEnd.x, sliceEnd.y);
-            gradient.addColorStop(0, 'rgba(232,213,183,0)');
-            gradient.addColorStop(0.5, 'rgba(232,213,183,.8)');
-            gradient.addColorStop(1, 'rgba(232,213,183,0)');
-        }
-        
-        ctx.strokeStyle = gradient;
+        const trailCfg = upgrades.rainbow ? ['rgba(255,0,255,.5)', 'rgba(0,255,255,.8)', 'rgba(255,255,0,.5)', 'rgba(232,213,183,.6)'] :
+            upgrades.trail ? ['rgba(255,215,0,0)', 'rgba(255,215,0,.9)', 'rgba(255,215,0,0)', 'rgba(255,215,0,.6)'] :
+            ['rgba(232,213,183,0)', 'rgba(232,213,183,.8)', 'rgba(232,213,183,0)', 'rgba(232,213,183,.6)'];
+        let g = ctx.createLinearGradient(sliceStart.x, sliceStart.y, sliceEnd.x, sliceEnd.y);
+        g.addColorStop(0, trailCfg[0]); g.addColorStop(0.5, trailCfg[1]); g.addColorStop(1, trailCfg[2]);
+        ctx.strokeStyle = g;
         ctx.lineWidth = 3;
         ctx.lineCap = 'round';
-        ctx.shadowColor = upgrades.trail ? 'rgba(255,215,0,.6)' : 'rgba(232,213,183,.6)';
+        ctx.shadowColor = trailCfg[3];
         ctx.shadowBlur = 10;
         ctx.beginPath();
         ctx.moveTo(sliceStart.x, sliceStart.y);
@@ -736,7 +652,6 @@ function draw() {
     requestAnimationFrame(draw);
 }
 
-// Audio - lofi / satisfying
 let audioCtx;
 function initAudio() {
     if (!audioCtx) audioCtx = new (AudioContext || webkitAudioContext)();
@@ -757,7 +672,6 @@ function lofiChain(node) {
 }
 
 function playTone(freq, duration, type = 'sine', vol = 0.12) {
-    if (!soundOn) return;
     initAudio();
     let t = audioCtx.currentTime;
     let osc = audioCtx.createOscillator();
@@ -774,64 +688,28 @@ function playTone(freq, duration, type = 'sine', vol = 0.12) {
 }
 
 function playCutSound(quality) {
-    if (!soundOn) return;
     initAudio();
     let t = audioCtx.currentTime;
-    if (quality === 'perfect') {
-        [261, 330, 392].forEach((f, i) => {
-            let o = audioCtx.createOscillator();
-            let g = audioCtx.createGain();
-            o.type = 'sine';
-            o.frequency.value = f + (Math.random() - 0.5) * 4;
-            g.gain.setValueAtTime(0, t);
-            g.gain.linearRampToValueAtTime(0.07, t + 0.03);
-            g.gain.exponentialRampToValueAtTime(0.001, t + 0.35 + i * 0.08);
-            o.connect(g);
-            lofiChain(g);
-            o.start(t + i * 0.06);
-            o.stop(t + 0.5);
-        });
-    } else if (quality === 'good') {
+    let cfg = { perfect: [261, 330, 392], good: [330], okay: [240], bad: [165] }[quality] || [165];
+    let vol = { perfect: 0.07, good: 0.1, okay: 0.06, bad: 0.05 }[quality] || 0.05;
+    let dur = { perfect: 0.38, good: 0.18, okay: 0.12, bad: 0.1 }[quality] || 0.1;
+    cfg.forEach((f, i) => {
         let o = audioCtx.createOscillator();
         let g = audioCtx.createGain();
         o.type = 'sine';
-        o.frequency.value = 330;
-        g.gain.setValueAtTime(0, t);
-        g.gain.linearRampToValueAtTime(0.1, t + 0.025);
-        g.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+        o.frequency.value = f + (Math.random() - 0.5) * 4;
+        let st = cfg.length > 1 ? i * 0.06 : 0;
+        g.gain.setValueAtTime(0, t + st);
+        g.gain.linearRampToValueAtTime(vol, t + st + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.001, t + st + dur);
         o.connect(g);
         lofiChain(g);
-        o.start(t);
-        o.stop(t + 0.2);
-    } else if (quality === 'okay') {
-        let o = audioCtx.createOscillator();
-        let g = audioCtx.createGain();
-        o.type = 'sine';
-        o.frequency.value = 240;
-        g.gain.setValueAtTime(0, t);
-        g.gain.linearRampToValueAtTime(0.06, t + 0.02);
-        g.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
-        o.connect(g);
-        lofiChain(g);
-        o.start(t);
-        o.stop(t + 0.14);
-    } else {
-        let o = audioCtx.createOscillator();
-        let g = audioCtx.createGain();
-        o.type = 'sine';
-        o.frequency.value = 165;
-        g.gain.setValueAtTime(0, t);
-        g.gain.linearRampToValueAtTime(0.05, t + 0.015);
-        g.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
-        o.connect(g);
-        lofiChain(g);
-        o.start(t);
-        o.stop(t + 0.12);
-    }
+        o.start(t + st);
+        o.stop(t + dur + 0.1);
+    });
 }
 
 function playWhoosh() {
-    if (!soundOn) return;
     initAudio();
     let t = audioCtx.currentTime;
     let buf = audioCtx.createBuffer(1, 4410, 44100);
@@ -868,7 +746,6 @@ function playWhoosh() {
 }
 
 function playBuySound() {
-    if (!soundOn) return;
     initAudio();
     let t = audioCtx.currentTime;
     let chimes = [784, 988, 1318];
@@ -888,11 +765,9 @@ function playBuySound() {
 }
 
 function playBuyFailSound() {
-    if (!soundOn) return;
     playTone(165, 150, 'sine', 0.06);
 }
 
-// Input handling
 function handleSliceStart(x, y) {
     slicing = true;
     sliceStart = {x, y};
@@ -962,30 +837,28 @@ function handleSliceEnd() {
     sliceEnd = null;
 }
 
-function rebirth() {
-    let cost = getRebirthCost();
-    if (score < cost) return;
-    rebirthCount++;
-    score = 0;
-    coins = 0;
-    streak = 0;
-    totalSlices = 0;
-    perfectSlices = 0;
-    currentFood = null;
-    upgrades.mult1 = false;
-    upgrades.mult2 = false;
-    upgrades.mult3 = false;
-    upgrades.auto = 0;
-    upgrades.lucky = false;
-    upgrades.golden = false;
+const REBIRTH_RESET = { mult1: false, mult2: false, mult3: false, auto: 0, lucky: false, golden: false };
+function resetForRebirth() {
+    Object.assign(upgrades, REBIRTH_RESET);
     scoreMultiplier = 1;
+}
+function applyScoreMult() {
+    if (upgrades.mult3) scoreMultiplier = 5;
+    else if (upgrades.mult2) scoreMultiplier = 3;
+    else if (upgrades.mult1) scoreMultiplier = 2;
+}
+function rebirth() {
+    if (score < getRebirthCost()) return;
+    rebirthCount++;
+    score = coins = streak = totalSlices = perfectSlices = 0;
+    currentFood = null;
+    resetForRebirth();
     setTimeout(spawnFood, 100);
     updateUI();
     playBuySound();
     save();
 }
 
-// Shop functions
 function getAutoCost() {
     return 300 * Math.pow(2, upgrades.auto);
 }
@@ -999,22 +872,12 @@ function getAutoCoinsPerSec() {
 function buyUpgrade(id, cost) {
     if (coins >= cost) {
         coins -= cost;
-        if (id === 'auto') {
-            upgrades.auto++;
-        } else {
-            upgrades[id] = true;
-        }
-        
-        if (id === 'mult1') scoreMultiplier = 2;
-        if (id === 'mult2') scoreMultiplier = 3;
-        if (id === 'mult3') scoreMultiplier = 5;
-        
+        upgrades[id] = id === 'auto' ? upgrades.auto + 1 : true;
+        if (['mult1', 'mult2', 'mult3'].includes(id)) applyScoreMult();
         updateUI();
         playBuySound();
         save();
-    } else {
-        playBuyFailSound();
-    }
+    } else playBuyFailSound();
 }
 
 function updateShop() {
@@ -1050,7 +913,7 @@ function updateShop() {
                 : !bought && coins >= cost && (!item.req || upgrades[item.req]);
             let display = item.id === 'auto'
                 ? (upgrades.auto > 0 ? `Lv.${upgrades.auto} · ${getAutoCoinsPerSec()} coins/sec` : item.desc)
-                : (item.id === 'scotty' && bought ? '10 coins/sec' : (item.id === 'scotty' ? '50% off for Tartan Hacks! · ' + item.desc : item.desc));
+                : (item.id === 'scotty' && bought ? '10 coins/sec' : item.desc);
             let iconHtml = item.emoji ? `<span class="upgrade-emoji">${item.emoji}</span>` : '';
             let priceHtml = item.saleCost != null && !bought
                 ? `<span class="price price-sale"><span class="sale-price">${item.saleCost} coins</span><br><span class="original-price"><s>${item.cost}</s></span></span>`
@@ -1101,108 +964,47 @@ function load() {
         rebirthCount = saved.rebirthCount || 0;
         
         if ((saved.version || 1) < SAVE_VERSION) {
-            upgrades.mult1 = false;
-            upgrades.mult2 = false;
-            upgrades.mult3 = false;
-            upgrades.auto = 0;
-            upgrades.lucky = false;
-            upgrades.golden = false;
-            upgrades.scotty = false;
+            Object.assign(upgrades, REBIRTH_RESET, { scotty: false });
             scoreMultiplier = 1;
         } else {
             if (upgrades.auto === true) upgrades.auto = 1;
             if (upgrades.scotty === undefined) upgrades.scotty = false;
-            if (upgrades.mult1) scoreMultiplier = 2;
-            if (upgrades.mult2) scoreMultiplier = 3;
-            if (upgrades.mult3) scoreMultiplier = 5;
+            applyScoreMult();
         }
         
         updateUI();
     }
 }
 
-// Event listeners
-// Mouse events
-c.addEventListener('mousedown', e => {
-    unlockAudio();
-    let rect = c.getBoundingClientRect();
-    handleSliceStart(e.clientX - rect.left, e.clientY - rect.top);
-});
-
-c.addEventListener('mousemove', e => {
-    let rect = c.getBoundingClientRect();
-    handleSliceMove(e.clientX - rect.left, e.clientY - rect.top);
-});
-
+c.addEventListener('mousedown', e => { unlockAudio(); let p = canvasCoords(e); handleSliceStart(p.x, p.y); });
+c.addEventListener('mousemove', e => { let p = canvasCoords(e); handleSliceMove(p.x, p.y); });
 c.addEventListener('mouseup', handleSliceEnd);
 
 function onFirstInteraction() {
     unlockAudio();
-    document.removeEventListener('touchstart', onFirstInteraction);
-    document.removeEventListener('touchend', onFirstInteraction);
-    document.removeEventListener('mousedown', onFirstInteraction);
+    ['touchstart', 'touchend', 'mousedown'].forEach(ev => document.removeEventListener(ev, onFirstInteraction));
 }
 document.addEventListener('touchstart', onFirstInteraction, { once: true, passive: true });
 document.addEventListener('touchend', onFirstInteraction, { once: true, passive: true });
 document.addEventListener('mousedown', onFirstInteraction, { once: true });
 
-// Touch events
-c.addEventListener('touchstart', e => {
-    e.preventDefault();
-    unlockAudio();
-    let rect = c.getBoundingClientRect();
-    let touch = e.touches[0];
-    handleSliceStart(touch.clientX - rect.left, touch.clientY - rect.top);
-});
-
-c.addEventListener('touchmove', e => {
-    e.preventDefault();
-    let rect = c.getBoundingClientRect();
-    let touch = e.touches[0];
-    handleSliceMove(touch.clientX - rect.left, touch.clientY - rect.top);
-});
-
-c.addEventListener('touchend', e => {
-    e.preventDefault();
-    handleSliceEnd();
-});
-
-// UI events
-document.getElementById('m').addEventListener('click', function() {
-    unlockAudio();
-    soundOn = !soundOn;
-    this.textContent = soundOn ? 'Sound: on' : 'Sound: off';
-});
+c.addEventListener('touchstart', e => { e.preventDefault(); unlockAudio(); let p = canvasCoords(e); handleSliceStart(p.x, p.y); });
+c.addEventListener('touchmove', e => { e.preventDefault(); let p = canvasCoords(e); handleSliceMove(p.x, p.y); });
+c.addEventListener('touchend', e => { e.preventDefault(); handleSliceEnd(); });
 
 document.getElementById('shop-btn').addEventListener('click', () => {
     unlockAudio();
-    const shop = document.getElementById('shop');
+    let shop = document.getElementById('shop');
     shop.classList.add('show', 'just-opened');
     updateShop();
     setTimeout(() => shop.classList.remove('just-opened'), 500);
 });
+['close-shop', 'shop-close-x'].forEach(id => document.getElementById(id).addEventListener('click', () => closeOverlay('shop')));
+document.getElementById('shop').addEventListener('click', e => { if (e.target.id === 'shop') closeOverlay('shop'); });
 
-document.getElementById('close-shop').addEventListener('click', () => {
-    document.getElementById('shop').classList.remove('show');
-});
-document.getElementById('shop-close-x').addEventListener('click', () => {
-    document.getElementById('shop').classList.remove('show');
-});
-
-document.getElementById('shop').addEventListener('click', (e) => {
-    if (e.target.id === 'shop') document.getElementById('shop').classList.remove('show');
-});
-
-document.getElementById('instructions-btn').addEventListener('click', () => {
-    unlockAudio();
-    document.getElementById('instructions-overlay').classList.add('show');
-});
-document.getElementById('close-instructions').addEventListener('click', () => {
-    document.getElementById('instructions-overlay').classList.remove('show');
-});
-document.getElementById('instructions-overlay').addEventListener('click', (e) => {
-    if (e.target.id === 'instructions-overlay') document.getElementById('instructions-overlay').classList.remove('show');
-});
+document.getElementById('instructions-btn').addEventListener('click', () => { unlockAudio(); document.getElementById('instructions-overlay').classList.add('show'); });
+document.getElementById('close-instructions').addEventListener('click', () => closeOverlay('instructions-overlay'));
+document.getElementById('instructions-overlay').addEventListener('click', e => { if (e.target.id === 'instructions-overlay') closeOverlay('instructions-overlay'); });
 
 // Auto income
 setInterval(() => {
@@ -1213,10 +1015,8 @@ setInterval(() => {
     }
 }, 1000);
 
-// Auto save
 setInterval(save, 5000);
 
-// Initialize game
 load();
 spawnFood();
 draw();

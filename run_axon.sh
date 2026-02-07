@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+  #!/usr/bin/env bash
 set -euo pipefail
 
 ARCHIVE="$1"
@@ -33,4 +33,4 @@ echo "Extraction successful"
 
 echo "Starting HTTP server on port 8000..."
 cd "$OUT_DIR"
-python3 -m http.server 8000
+python3 -m http.server 8000 
