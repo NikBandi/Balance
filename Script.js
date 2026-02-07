@@ -16,6 +16,7 @@ let slicing = false;
 let sliceStart = null;
 let sliceEnd = null;
 let particles = [];
+let coinPopups = [];
 let time = 0;
 let perfectEffect = { active: false, x: 0, y: 0, t: 0 };
 
@@ -82,6 +83,9 @@ class Food {
         
         this.x = w / 2;
         this.y = h / 2;
+        this.speedMult = 0.6 + Math.random() * 0.8;
+        this.vx = 0;
+        this.vy = 0;
         this.rotation = Math.random() * Math.PI * 2;
         this.wobble = 0;
         this.wobbleSpeed = 0.02;
@@ -94,7 +98,28 @@ class Food {
     
     update() {
         if (!this.sliced) {
-            this.wobble += this.wobbleSpeed;
+            let spinBonus = Math.min(score / 3000, 0.12);
+            this.wobble += this.wobbleSpeed + spinBonus;
+            if (score >= 10000) {
+                let baseSpeed = 1.2 + Math.floor((score - 10000) / 1000) * 0.25;
+                let spd = baseSpeed * this.speedMult;
+                if (this.vx === 0 && this.vy === 0) {
+                    let angle = Math.random() * Math.PI * 2;
+                    this.vx = Math.cos(angle) * spd;
+                    this.vy = Math.sin(angle) * spd;
+                } else {
+                    let mag = Math.hypot(this.vx, this.vy) || 1;
+                    this.vx = (this.vx / mag) * spd;
+                    this.vy = (this.vy / mag) * spd;
+                }
+                this.x += this.vx;
+                this.y += this.vy;
+                let pad = 80;
+                if (this.x < pad) { this.x = pad; this.vx = Math.abs(this.vx) || spd; }
+                if (this.x > w - pad) { this.x = w - pad; this.vx = -Math.abs(this.vx) || -spd; }
+                if (this.y < pad) { this.y = pad; this.vy = Math.abs(this.vy) || spd; }
+                if (this.y > h - pad) { this.y = h - pad; this.vy = -Math.abs(this.vy) || -spd; }
+            }
             return;
         }
         let g = 0.45;
@@ -111,7 +136,8 @@ class Food {
     draw() {
         ctx.save();
         ctx.translate(this.x, this.y);
-        ctx.rotate(this.rotation + Math.sin(this.wobble) * 0.05);
+        let wobbleAmp = 0.05 + Math.min(score / 2000, 0.12);
+        ctx.rotate(this.rotation + Math.sin(this.wobble) * wobbleAmp);
         
         if (!this.sliced) {
             ctx.shadowColor = this.golden ? 'rgba(255,215,0,.5)' : 'rgba(0,0,0,.3)';
@@ -135,7 +161,8 @@ class Food {
         } else {
             let sliceY = this.sliceY;
             let bound = 200;
-            // Each half rotates around the cut line so it tumbles; clip stays axis-aligned in shape space
+            let sliceAngle = this.sliceAngle != null ? this.sliceAngle : 0;
+            ctx.rotate(-sliceAngle);
             ctx.save();
             ctx.translate(-this.sliceLeftX, this.sliceLeftY);
             ctx.translate(0, sliceY);
@@ -412,12 +439,42 @@ class Particle {
     }
 }
 
+// Coin popup: rises up, then falls
+class CoinPopup {
+    constructor(x, y, amount) {
+        this.x = x;
+        this.y = y;
+        this.text = '+' + amount + ' coins';
+        this.vy = -8;
+        this.life = 1;
+        this.decay = 0.022;
+    }
+    update() {
+        this.vy += 0.4;
+        this.y += this.vy;
+        this.life -= this.decay;
+        return this.life > 0;
+    }
+    draw() {
+        ctx.save();
+        ctx.globalAlpha = this.life;
+        ctx.font = 'bold 18px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#ffc93c';
+        ctx.strokeStyle = 'rgba(0,0,0,.6)';
+        ctx.lineWidth = 2;
+        ctx.strokeText(this.text, this.x, this.y);
+        ctx.fillText(this.text, this.x, this.y);
+        ctx.restore();
+    }
+}
+
 // Game functions
 function spawnFood() {
     currentFood = new Food();
 }
 
-function calculateSlice(y) {
+function calculateSlice(y, sliceMidX, sliceMidY) {
     if (!currentFood) return;
     
     let relY = y - currentFood.y;
@@ -432,6 +489,7 @@ function calculateSlice(y) {
     }
     
     let topPercent = Math.round((top / bottom) * 100);
+    topPercent = Math.max(0, Math.min(100, topPercent));
     let bottomPercent = 100 - topPercent;
     currentFood.leftPercent = Math.max(topPercent, bottomPercent);
     currentFood.rightPercent = Math.min(topPercent, bottomPercent);
@@ -440,6 +498,9 @@ function calculateSlice(y) {
     let diff = Math.abs(50 - currentFood.rightPercent);
     let points = 0;
     let coinEarn = 0;
+    
+    let effX = sliceMidX != null ? sliceMidX : currentFood.x;
+    let effY = sliceMidY != null ? sliceMidY : currentFood.y + relY;
     
     playWhoosh();
     if (diff === 0) {
@@ -450,11 +511,11 @@ function calculateSlice(y) {
         document.getElementById('pf').classList.add('show');
         setTimeout(() => document.getElementById('pf').classList.remove('show'), 1000);
         playCutSound('perfect');
-        perfectEffect = { active: true, x: currentFood.x, y: currentFood.y + relY, t: 0 };
+        perfectEffect = { active: true, x: effX, y: effY, t: 0 };
         for (let i = 0; i < 24; i++) {
             let a = (i / 24) * Math.PI * 2;
-            let px = currentFood.x + Math.cos(a) * 25;
-            let py = currentFood.y + relY + Math.sin(a) * 25;
+            let px = effX + Math.cos(a) * 25;
+            let py = effY + Math.sin(a) * 25;
             let p = new Particle(px, py, '#ffd700');
             p.vx = Math.cos(a) * 8;
             p.vy = Math.sin(a) * 8 - 3;
@@ -499,16 +560,31 @@ function calculateSlice(y) {
     coins += coinEarn;
     totalSlices++;
     updateUI();
+    showCoinsGain(coinEarn);
+    
+    let popX = effX;
+    let popY = effY - 20;
+    coinPopups.push(new CoinPopup(popX, popY, coinEarn));
     
     let particleCount = upgrades.particles ? 20 : 12;
     for (let i = 0; i < particleCount; i++) {
-        let px = currentFood.x + (Math.random() - 0.5) * 40;
-        let py = currentFood.y + relY + (Math.random() - 0.5) * 20;
+        let px = effX + (Math.random() - 0.5) * 40;
+        let py = effY + (Math.random() - 0.5) * 20;
         particles.push(new Particle(px, py, currentFood.c2));
     }
 }
 
 let cutPopupTimer;
+let coinsGainTimer;
+function showCoinsGain(amount) {
+    let el = document.getElementById('coins-gain');
+    el.textContent = '+' + amount;
+    el.classList.remove('show');
+    el.offsetHeight;
+    el.classList.add('show');
+    clearTimeout(coinsGainTimer);
+    coinsGainTimer = setTimeout(() => el.classList.remove('show'), 600);
+}
 function showCutPopup(text) {
     let el = document.getElementById('cut-popup');
     el.textContent = text;
@@ -546,6 +622,12 @@ function draw() {
     particles = particles.filter(p => {
         let alive = p.update();
         p.draw();
+        return alive;
+    });
+    
+    coinPopups = coinPopups.filter(cp => {
+        let alive = cp.update();
+        cp.draw();
         return alive;
     });
     
@@ -750,43 +832,51 @@ function handleSliceMove(x, y) {
     if (slicing) sliceEnd = {x, y};
 }
 
-function sliceIntersectsFood(sliceMidY) {
+function sliceIntersectsFood(sliceMidX, sliceMidY) {
     if (!currentFood) return false;
-    // Vertical extent of food in screen space (rotation-safe: use diagonal half-length)
     let halfH = currentFood.shape === 3
         ? currentFood.r
         : (Math.sqrt(Math.pow(currentFood.w / 2, 2) + Math.pow(currentFood.h / 2, 2)));
     let margin = 15;
-    return Math.abs(sliceMidY - currentFood.y) <= halfH + margin;
+    let dist = Math.hypot(sliceMidX - currentFood.x, sliceMidY - currentFood.y);
+    return dist <= halfH + margin;
 }
 
 function handleSliceEnd() {
     if (slicing && currentFood && !currentFood.sliced && sliceStart && sliceEnd) {
-        let dy = Math.abs(sliceEnd.y - sliceStart.y);
-        let dx = Math.abs(sliceEnd.x - sliceStart.x);
+        let dx = sliceEnd.x - sliceStart.x;
+        let dy = sliceEnd.y - sliceStart.y;
+        let sliceLen = Math.hypot(dx, dy);
+        let sliceMidX = (sliceStart.x + sliceEnd.x) / 2;
         let sliceMidY = (sliceStart.y + sliceEnd.y) / 2;
 
-        // 1. Only accept horizontal slices (stroke must be much more horizontal than vertical)
-        let isHorizontal = dx > dy * 3;
-        // 2. Slice must go through the fruit (midpoint Y must be within food bounds)
-        let throughFruit = sliceIntersectsFood(sliceMidY);
+        let minLen = 40;
+        let throughFruit = sliceIntersectsFood(sliceMidX, sliceMidY);
 
-        if (isHorizontal && throughFruit) {
+        if (sliceLen >= minLen && throughFruit) {
+            let foodRot = currentFood.rotation + Math.sin(currentFood.wobble) * (0.05 + Math.min(score / 2000, 0.12));
+            let sliceAngle = Math.atan2(dy, dx) - foodRot;
+            let cosA = Math.cos(-foodRot), sinA = Math.sin(-foodRot);
+            let localX = (sliceMidX - currentFood.x) * cosA - (sliceMidY - currentFood.y) * sinA;
+            let localY = (sliceMidX - currentFood.x) * sinA + (sliceMidY - currentFood.y) * cosA;
+            let sliceY = -localX * Math.sin(sliceAngle) + localY * Math.cos(sliceAngle);
+
             currentFood.sliced = true;
-            currentFood.sliceY = sliceMidY - currentFood.y;
-            currentFood.sliceLeftX = -22;
-            currentFood.sliceLeftY = 0;
-            currentFood.sliceLeftVx = -6;
-            currentFood.sliceLeftVy = -3;
+            currentFood.sliceY = sliceY;
+            currentFood.sliceAngle = sliceAngle;
+            currentFood.sliceLeftX = 0;
+            currentFood.sliceLeftY = -22;
+            currentFood.sliceLeftVx = 0;
+            currentFood.sliceLeftVy = -6;
             currentFood.sliceLeftAngle = 0;
             currentFood.sliceLeftSpin = -0.06;
-            currentFood.sliceRightX = 22;
-            currentFood.sliceRightY = 0;
-            currentFood.sliceRightVx = 6;
-            currentFood.sliceRightVy = -3;
+            currentFood.sliceRightX = 0;
+            currentFood.sliceRightY = 22;
+            currentFood.sliceRightVx = 0;
+            currentFood.sliceRightVy = 6;
             currentFood.sliceRightAngle = 0;
             currentFood.sliceRightSpin = 0.06;
-            calculateSlice(sliceMidY);
+            calculateSlice(currentFood.y + sliceY, sliceMidX, sliceMidY);
             currentFood.showResult = true;
 
             setTimeout(() => {
@@ -916,8 +1006,10 @@ document.getElementById('m').addEventListener('click', function() {
 });
 
 document.getElementById('shop-btn').addEventListener('click', () => {
-    document.getElementById('shop').classList.add('show');
+    const shop = document.getElementById('shop');
+    shop.classList.add('show', 'just-opened');
     updateShop();
+    setTimeout(() => shop.classList.remove('just-opened'), 500);
 });
 
 document.getElementById('close-shop').addEventListener('click', () => {
