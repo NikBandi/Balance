@@ -175,7 +175,7 @@ class Food {
             
             if (this.golden) {
                 ctx.fillStyle = 'rgba(255,215,0,.3)';
-                ctx.font = '600 20px system-ui,sans-serif';
+                ctx.font = '600 20px "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
                 ctx.textAlign = 'center';
                 ctx.fillText('★', 0, 10);
             }
@@ -452,7 +452,7 @@ class CoinPopup {
     draw() {
         ctx.save();
         ctx.globalAlpha = this.life;
-        ctx.font = '600 18px system-ui,sans-serif';
+        ctx.font = '600 18px "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
         ctx.textAlign = 'center';
         if (this.lucky) {
             let hue = (time * 200) % 360;
