@@ -31,7 +31,8 @@ let upgrades = {
     rainbow: false,
     golden: false,
     particles: false,
-    trail: false
+    trail: false,
+    scotty: false
 };
 
 let scoreMultiplier = 1;
@@ -75,6 +76,9 @@ const shopItems = {
         {id: 'rainbow', name: 'Rainbow Trail', desc: 'Color trail', cost: 250},
         {id: 'particles', name: 'Particle Boost', desc: '2x particles', cost: 400},
         {id: 'trail', name: 'Sparkle Trail', desc: 'Glitter path', cost: 600}
+    ],
+    special: [
+        {id: 'scotty', name: 'Scotty', desc: '+10 coins/sec', cost: 1000, saleCost: 500, emoji: '🐕'}
     ]
 };
 
@@ -960,6 +964,7 @@ function rebirth() {
     upgrades.auto = 0;
     upgrades.lucky = false;
     upgrades.golden = false;
+    upgrades.scotty = false;
     scoreMultiplier = 1;
     setTimeout(spawnFood, 100);
     updateUI();
@@ -973,7 +978,9 @@ function getAutoCost() {
 }
 
 function getAutoCoinsPerSec() {
-    return upgrades.auto > 0 ? Math.pow(2, upgrades.auto - 1) : 0;
+    let auto = upgrades.auto > 0 ? Math.pow(2, upgrades.auto - 1) : 0;
+    let scotty = upgrades.scotty ? 10 : 0;
+    return auto + scotty;
 }
 
 function buyUpgrade(id, cost) {
@@ -998,27 +1005,32 @@ function buyUpgrade(id, cost) {
 }
 
 function updateShop() {
-    let categories = ['upgrades', 'abilities', 'cosmetics'];
+    let categories = ['upgrades', 'abilities', 'cosmetics', 'special'];
     
     categories.forEach(category => {
         let html = '';
         shopItems[category].forEach(item => {
             let bought = item.levelable ? false : upgrades[item.id];
-            let cost = item.id === 'auto' ? getAutoCost() : item.cost;
+            let cost = item.id === 'auto' ? getAutoCost() : (item.saleCost != null && !bought ? item.saleCost : item.cost);
             let canBuy = item.levelable
                 ? coins >= cost
                 : !bought && coins >= cost && (!item.req || upgrades[item.req]);
             let display = item.id === 'auto'
                 ? (upgrades.auto > 0 ? `Lv.${upgrades.auto} · ${getAutoCoinsPerSec()} coins/sec` : item.desc)
-                : item.desc;
+                : (item.id === 'scotty' && bought ? '10 coins/sec' : (item.id === 'scotty' ? '50% off for Tartan Hacks! · ' + item.desc : item.desc));
+            let iconHtml = item.emoji ? `<span class="upgrade-emoji">${item.emoji}</span>` : '';
+            let priceHtml = item.saleCost != null && !bought
+                ? `<span class="price price-sale"><span class="sale-price">${item.saleCost} coins</span><br><span class="original-price"><s>${item.cost}</s></span></span>`
+                : `<span class="price">${cost} coins</span>`;
             
             html += `
-                <div class="upgrade ${bought ? 'bought' : ''}">
+                <div class="upgrade ${bought ? 'bought' : ''} ${item.emoji ? 'upgrade-with-img' : ''}">
+                    ${iconHtml}
                     <div>
                         <h3>${item.name}${item.id === 'auto' && upgrades.auto > 0 ? ' (Lv.' + upgrades.auto + ')' : ''}</h3>
                         <p>${display}</p>
                     </div>
-                    <span class="price">${cost} coins</span>
+                    ${priceHtml}
                     <button class="buy-btn" onclick="buyUpgrade('${item.id}', ${cost})" ${!canBuy ? 'disabled' : ''}>
                         ${item.levelable ? 'upgrade' : (bought ? 'owned' : 'buy')}
                     </button>
@@ -1062,9 +1074,11 @@ function load() {
             upgrades.auto = 0;
             upgrades.lucky = false;
             upgrades.golden = false;
+            upgrades.scotty = false;
             scoreMultiplier = 1;
         } else {
             if (upgrades.auto === true) upgrades.auto = 1;
+            if (upgrades.scotty === undefined) upgrades.scotty = false;
             if (upgrades.mult1) scoreMultiplier = 2;
             if (upgrades.mult2) scoreMultiplier = 3;
             if (upgrades.mult3) scoreMultiplier = 5;
@@ -1147,7 +1161,7 @@ document.getElementById('instructions-overlay').addEventListener('click', (e) =>
 
 // Auto income
 setInterval(() => {
-    if (upgrades.auto > 0) {
+    if (upgrades.auto > 0 || upgrades.scotty) {
         coins += getAutoCoinsPerSec();
         updateUI();
         save();

@@ -599,6 +599,17 @@ button:disabled {
     font-size: 13px;
 }
 
+.price-sale .sale-price {
+    color: #86efac;
+    font-size: 14px;
+}
+
+.price-sale .original-price {
+    font-size: 11px;
+    color: rgba(255,209,102,.5);
+    text-decoration: line-through;
+}
+
 .buy-btn {
     padding: 6px 14px;
     font-size: 11px;
