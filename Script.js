@@ -2,8 +2,17 @@
 // Canvas setup
 const c = document.getElementById('c');
 const ctx = c.getContext('2d');
-const w = c.width = Math.min(600, window.innerWidth - 40);
-const h = c.height = Math.min(800, window.innerHeight - 100);
+function resizeCanvas() {
+    let isMobile = window.innerWidth <= 480;
+    let pad = isMobile ? 16 : 40;
+    let maxH = isMobile ? Math.min(360, window.innerHeight * 0.42) : Math.min(800, window.innerHeight - 100);
+    c.width = Math.min(600, window.innerWidth - pad);
+    c.height = maxH;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+const w = c.width;
+const h = c.height;
 
 // Game state
 let score = 0;
@@ -224,8 +233,12 @@ class Food {
                 ctx.strokeStyle = this.c3;
                 ctx.lineWidth = 2;
                 ctx.stroke();
-                ctx.fillStyle = 'rgba(139,115,85,0.15)';
-                for (let i = 0; i < 4; i++) ctx.fillRect(-this.w/2 + 12 + i*35, -this.h/2 + 8, 18, 4);
+                ctx.fillStyle = 'rgba(139,115,85,0.1)';
+                let stripW = 22, stripH = 2, gap = 30;
+                for (let i = 0; i < 4; i++) {
+                    let sx = -this.w/2 + 18 + i * gap;
+                    ctx.fillRect(sx, -this.h/2 + 10, stripW, stripH);
+                }
             } else if (this.name === 'cake') {
                 ctx.fillStyle = this.c1;
                 let r = 6, x = -this.w/2, y = -this.h/2;
@@ -732,6 +745,11 @@ function draw() {
 let audioCtx;
 function initAudio() {
     if (!audioCtx) audioCtx = new (AudioContext || webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+function unlockAudio() {
+    initAudio();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
 }
 
 function lofiChain(node) {
@@ -1091,6 +1109,7 @@ function load() {
 // Event listeners
 // Mouse events
 c.addEventListener('mousedown', e => {
+    unlockAudio();
     let rect = c.getBoundingClientRect();
     handleSliceStart(e.clientX - rect.left, e.clientY - rect.top);
 });
@@ -1102,9 +1121,20 @@ c.addEventListener('mousemove', e => {
 
 c.addEventListener('mouseup', handleSliceEnd);
 
+function onFirstInteraction() {
+    unlockAudio();
+    document.removeEventListener('touchstart', onFirstInteraction);
+    document.removeEventListener('touchend', onFirstInteraction);
+    document.removeEventListener('mousedown', onFirstInteraction);
+}
+document.addEventListener('touchstart', onFirstInteraction, { once: true, passive: true });
+document.addEventListener('touchend', onFirstInteraction, { once: true, passive: true });
+document.addEventListener('mousedown', onFirstInteraction, { once: true });
+
 // Touch events
 c.addEventListener('touchstart', e => {
     e.preventDefault();
+    unlockAudio();
     let rect = c.getBoundingClientRect();
     let touch = e.touches[0];
     handleSliceStart(touch.clientX - rect.left, touch.clientY - rect.top);
@@ -1124,11 +1154,13 @@ c.addEventListener('touchend', e => {
 
 // UI events
 document.getElementById('m').addEventListener('click', function() {
+    unlockAudio();
     soundOn = !soundOn;
     this.textContent = soundOn ? 'sound: on' : 'sound: off';
 });
 
 document.getElementById('shop-btn').addEventListener('click', () => {
+    unlockAudio();
     const shop = document.getElementById('shop');
     shop.classList.add('show', 'just-opened');
     updateShop();
@@ -1150,6 +1182,7 @@ document.getElementById('shop').addEventListener('click', (e) => {
 
 document.getElementById('instructions-link').addEventListener('click', (e) => {
     e.preventDefault();
+    unlockAudio();
     document.getElementById('instructions-overlay').classList.add('show');
 });
 document.getElementById('close-instructions').addEventListener('click', () => {
