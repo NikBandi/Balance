@@ -841,8 +841,22 @@ function playWhoosh() {
 
 function playBuySound() {
     if (!soundOn) return;
-    playTone(440, 100, 'sine', 0.11);
-    setTimeout(() => { if (soundOn) playTone(554, 120, 'sine', 0.09); }, 100);
+    initAudio();
+    let t = audioCtx.currentTime;
+    let chimes = [784, 988, 1318];
+    chimes.forEach((freq, i) => {
+        let osc = audioCtx.createOscillator();
+        let gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0, t + i * 0.06);
+        gain.gain.linearRampToValueAtTime(0.12, t + i * 0.06 + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + i * 0.06 + 0.25);
+        osc.connect(gain);
+        lofiChain(gain);
+        osc.start(t + i * 0.06);
+        osc.stop(t + 0.5);
+    });
 }
 
 function playBuyFailSound() {
@@ -1100,6 +1114,24 @@ document.getElementById('rebirth-btn').addEventListener('click', rebirth);
 
 document.getElementById('close-shop').addEventListener('click', () => {
     document.getElementById('shop').classList.remove('show');
+});
+document.getElementById('shop-close-x').addEventListener('click', () => {
+    document.getElementById('shop').classList.remove('show');
+});
+
+document.getElementById('shop').addEventListener('click', (e) => {
+    if (e.target.id === 'shop') document.getElementById('shop').classList.remove('show');
+});
+
+document.getElementById('instructions-link').addEventListener('click', (e) => {
+    e.preventDefault();
+    document.getElementById('instructions-overlay').classList.add('show');
+});
+document.getElementById('close-instructions').addEventListener('click', () => {
+    document.getElementById('instructions-overlay').classList.remove('show');
+});
+document.getElementById('instructions-overlay').addEventListener('click', (e) => {
+    if (e.target.id === 'instructions-overlay') document.getElementById('instructions-overlay').classList.remove('show');
 });
 
 // Auto income
