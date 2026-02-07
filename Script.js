@@ -25,7 +25,7 @@ let upgrades = {
     mult1: false,
     mult2: false,
     mult3: false,
-    auto: false,
+    auto: 0,
     lucky: false,
     rainbow: false,
     golden: false,
@@ -34,6 +34,15 @@ let upgrades = {
 };
 
 let scoreMultiplier = 1;
+let rebirthCount = 0;
+
+function getRebirthCost() {
+    return 10000 * Math.pow(2, rebirthCount);
+}
+
+function getRebirthMultiplier() {
+    return Math.pow(2, rebirthCount);
+}
 
 // Food definitions
 const foods = [
@@ -41,7 +50,7 @@ const foods = [
     {name: 'baguette', shape: 1, c1: '#d4a574', c2: '#f5deb3', c3: '#8b6914', w: 200, h: 60},
     {name: 'egg', shape: 2, c1: '#fff', c2: '#ffeb3b', c3: '#ff6f00', w: 70, h: 90},
     {name: 'melon', shape: 3, c1: '#2d5016', c2: '#ff6b9d', c3: '#2d1b3d', r: 110},
-    {name: 'cheese', shape: 4, c1: '#ffd700', c2: '#ffed4e', c3: '#000', w: 140, h: 120},
+    {name: 'cheese', shape: 4, c1: '#f4d03f', c2: '#f9e79f', c3: '#d4ac0d', w: 140, h: 120},
     {name: 'cake', shape: 0, c1: '#ffb6c1', c2: '#fff0f5', c3: '#ff69b4', w: 120, h: 100},
     {name: 'carrot', shape: 5, c1: '#ff7f27', c2: '#ffa500', c3: '#228b22', w: 50, h: 140},
     {name: 'fish', shape: 6, c1: '#87ceeb', c2: '#ffb6c1', c3: '#4682b4', w: 160, h: 80},
@@ -57,7 +66,7 @@ const shopItems = {
         {id: 'mult3', name: 'Laser Cutter', desc: '5x score', cost: 2000, mult: 5, req: 'mult2'}
     ],
     abilities: [
-        {id: 'auto', name: 'Auto Slice', desc: '+1 coin/sec', cost: 300},
+        {id: 'auto', name: 'Auto Slice', desc: 'Doubles coins/sec each level', cost: 300, levelable: true},
         {id: 'lucky', name: 'Lucky Cuts', desc: '20% 2x coins', cost: 800},
         {id: 'golden', name: 'Golden Touch', desc: 'Rare golden 10x', cost: 1500}
     ],
@@ -114,11 +123,12 @@ class Food {
                 }
                 this.x += this.vx;
                 this.y += this.vy;
-                let pad = 80;
-                if (this.x < pad) { this.x = pad; this.vx = Math.abs(this.vx) || spd; }
-                if (this.x > w - pad) { this.x = w - pad; this.vx = -Math.abs(this.vx) || -spd; }
-                if (this.y < pad) { this.y = pad; this.vy = Math.abs(this.vy) || spd; }
-                if (this.y > h - pad) { this.y = h - pad; this.vy = -Math.abs(this.vy) || -spd; }
+                let halfExt = this.shape === 3 ? this.r : Math.hypot(this.w / 2, this.h / 2);
+                let minX = halfExt, maxX = w - halfExt, minY = halfExt, maxY = h - halfExt;
+                if (this.x < minX) { this.x = minX; this.vx = Math.abs(this.vx) || spd; }
+                if (this.x > maxX) { this.x = maxX; this.vx = -Math.abs(this.vx) || -spd; }
+                if (this.y < minY) { this.y = minY; this.vy = Math.abs(this.vy) || spd; }
+                if (this.y > maxY) { this.y = maxY; this.vy = -Math.abs(this.vy) || -spd; }
             }
             return;
         }
@@ -154,7 +164,7 @@ class Food {
             
             if (this.golden) {
                 ctx.fillStyle = 'rgba(255,215,0,.3)';
-                ctx.font = '20px Courier';
+                ctx.font = '600 20px Outfit, system-ui, sans-serif';
                 ctx.textAlign = 'center';
                 ctx.fillText('★', 0, 10);
             }
@@ -321,12 +331,23 @@ class Food {
                 ctx.lineTo(-this.w/2, this.h/2);
                 ctx.closePath();
                 ctx.fill();
-                ctx.fillStyle = '#c9a020';
-                ctx.beginPath();
-                ctx.arc(-20, 10, 12, 0, Math.PI * 2);
-                ctx.arc(25, -15, 10, 0, Math.PI * 2);
-                ctx.arc(-10, -25, 8, 0, Math.PI * 2);
-                ctx.fill();
+                ctx.strokeStyle = 'rgba(212,172,13,0.5)';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+                let holes = [
+                    [-22, 8, 10], [-18, -18, 8], [20, -12, 9], [15, 22, 7],
+                    [-5, 5, 6], [28, 8, 5], [-28, -8, 6]
+                ];
+                for (let [hx, hy, hr] of holes) {
+                    ctx.fillStyle = 'rgba(212,172,13,0.35)';
+                    ctx.beginPath();
+                    ctx.arc(hx, hy, hr, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = 'rgba(184,134,11,0.5)';
+                    ctx.beginPath();
+                    ctx.arc(hx, hy, hr * 0.6, 0, Math.PI * 2);
+                    ctx.fill();
+                }
             } else {
                 ctx.fillStyle = this.c1;
                 ctx.beginPath();
@@ -458,7 +479,7 @@ class CoinPopup {
     draw() {
         ctx.save();
         ctx.globalAlpha = this.life;
-        ctx.font = 'bold 18px system-ui, sans-serif';
+        ctx.font = '600 18px Outfit, system-ui, sans-serif';
         ctx.textAlign = 'center';
         ctx.fillStyle = '#ffc93c';
         ctx.strokeStyle = 'rgba(0,0,0,.6)';
@@ -489,7 +510,7 @@ function calculateSlice(y, sliceMidX, sliceMidY) {
     }
     
     let topPercent = Math.round((top / bottom) * 100);
-    topPercent = Math.max(0, Math.min(100, topPercent));
+    topPercent = Math.max(1, Math.min(99, topPercent));
     let bottomPercent = 100 - topPercent;
     currentFood.leftPercent = Math.max(topPercent, bottomPercent);
     currentFood.rightPercent = Math.min(topPercent, bottomPercent);
@@ -545,7 +566,7 @@ function calculateSlice(y, sliceMidX, sliceMidY) {
         playCutSound('bad');
     }
     
-    points *= scoreMultiplier;
+    points *= scoreMultiplier * getRebirthMultiplier();
     
     if (currentFood.golden) {
         coinEarn *= 10;
@@ -596,6 +617,14 @@ function showCutPopup(text) {
 function updateUI() {
     document.getElementById('s').textContent = '✂ ' + score;
     document.getElementById('coins').textContent = '💰 ' + coins + ' coins';
+    let rb = document.getElementById('rebirth-btn');
+    if (rb) {
+        let cost = getRebirthCost();
+        let mult = getRebirthMultiplier();
+        rb.textContent = rebirthCount > 0 ? '✨ rebirth (' + cost + ') ×' + mult : '✨ rebirth (' + cost + ')';
+        rb.disabled = score < cost;
+        rb.title = score >= cost ? 'Reset score for +2x base multiplier' : 'Need ' + cost + ' score';
+    }
     
     let accuracy = totalSlices > 0 ? Math.round((perfectSlices / totalSlices) * 100) : 100;
     let label = 'Perfect';
@@ -891,11 +920,45 @@ function handleSliceEnd() {
     sliceEnd = null;
 }
 
+function rebirth() {
+    let cost = getRebirthCost();
+    if (score < cost) return;
+    rebirthCount++;
+    score = 0;
+    streak = 0;
+    totalSlices = 0;
+    perfectSlices = 0;
+    currentFood = null;
+    upgrades.mult1 = false;
+    upgrades.mult2 = false;
+    upgrades.mult3 = false;
+    upgrades.auto = 0;
+    upgrades.lucky = false;
+    upgrades.golden = false;
+    scoreMultiplier = 1;
+    setTimeout(spawnFood, 100);
+    updateUI();
+    playBuySound();
+    save();
+}
+
 // Shop functions
+function getAutoCost() {
+    return 300 * Math.pow(2, upgrades.auto);
+}
+
+function getAutoCoinsPerSec() {
+    return upgrades.auto > 0 ? Math.pow(2, upgrades.auto - 1) : 0;
+}
+
 function buyUpgrade(id, cost) {
     if (coins >= cost) {
         coins -= cost;
-        upgrades[id] = true;
+        if (id === 'auto') {
+            upgrades.auto++;
+        } else {
+            upgrades[id] = true;
+        }
         
         if (id === 'mult1') scoreMultiplier = 2;
         if (id === 'mult2') scoreMultiplier = 3;
@@ -915,18 +978,24 @@ function updateShop() {
     categories.forEach(category => {
         let html = '';
         shopItems[category].forEach(item => {
-            let bought = upgrades[item.id];
-            let canBuy = !bought && coins >= item.cost && (!item.req || upgrades[item.req]);
+            let bought = item.levelable ? false : upgrades[item.id];
+            let cost = item.id === 'auto' ? getAutoCost() : item.cost;
+            let canBuy = item.levelable
+                ? coins >= cost
+                : !bought && coins >= cost && (!item.req || upgrades[item.req]);
+            let display = item.id === 'auto'
+                ? (upgrades.auto > 0 ? `Lv.${upgrades.auto} · ${getAutoCoinsPerSec()} coins/sec` : item.desc)
+                : item.desc;
             
             html += `
                 <div class="upgrade ${bought ? 'bought' : ''}">
                     <div>
-                        <h3>${item.name}</h3>
-                        <p>${item.desc}</p>
+                        <h3>${item.name}${item.id === 'auto' && upgrades.auto > 0 ? ' (Lv.' + upgrades.auto + ')' : ''}</h3>
+                        <p>${display}</p>
                     </div>
-                    <span class="price">${item.cost} coins</span>
-                    <button class="buy-btn" onclick="buyUpgrade('${item.id}', ${item.cost})" ${bought || !canBuy ? 'disabled' : ''}>
-                        ${bought ? 'owned' : 'buy'}
+                    <span class="price">${cost} coins</span>
+                    <button class="buy-btn" onclick="buyUpgrade('${item.id}', ${cost})" ${!canBuy ? 'disabled' : ''}>
+                        ${item.levelable ? 'upgrade' : (bought ? 'owned' : 'buy')}
                     </button>
                 </div>
             `;
@@ -936,14 +1005,17 @@ function updateShop() {
     });
 }
 
-// Save/Load
+const SAVE_VERSION = 2;
+
 function save() {
     localStorage.setItem('lofiSlicerSave', JSON.stringify({
+        version: SAVE_VERSION,
         coins,
         score,
         upgrades,
         totalSlices,
-        perfectSlices
+        perfectSlices,
+        rebirthCount
     }));
 }
 
@@ -956,10 +1028,22 @@ function load() {
         upgrades = saved.upgrades || {};
         totalSlices = saved.totalSlices || 0;
         perfectSlices = saved.perfectSlices || 0;
+        rebirthCount = saved.rebirthCount || 0;
         
-        if (upgrades.mult1) scoreMultiplier = 2;
-        if (upgrades.mult2) scoreMultiplier = 3;
-        if (upgrades.mult3) scoreMultiplier = 5;
+        if ((saved.version || 1) < SAVE_VERSION) {
+            upgrades.mult1 = false;
+            upgrades.mult2 = false;
+            upgrades.mult3 = false;
+            upgrades.auto = 0;
+            upgrades.lucky = false;
+            upgrades.golden = false;
+            scoreMultiplier = 1;
+        } else {
+            if (upgrades.auto === true) upgrades.auto = 1;
+            if (upgrades.mult1) scoreMultiplier = 2;
+            if (upgrades.mult2) scoreMultiplier = 3;
+            if (upgrades.mult3) scoreMultiplier = 5;
+        }
         
         updateUI();
     }
@@ -1012,14 +1096,16 @@ document.getElementById('shop-btn').addEventListener('click', () => {
     setTimeout(() => shop.classList.remove('just-opened'), 500);
 });
 
+document.getElementById('rebirth-btn').addEventListener('click', rebirth);
+
 document.getElementById('close-shop').addEventListener('click', () => {
     document.getElementById('shop').classList.remove('show');
 });
 
 // Auto income
 setInterval(() => {
-    if (upgrades.auto) {
-        coins += 1;
+    if (upgrades.auto > 0) {
+        coins += getAutoCoinsPerSec();
         updateUI();
         save();
     }
