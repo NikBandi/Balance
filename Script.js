@@ -5,7 +5,7 @@ const ctx = c.getContext('2d');
 function resizeCanvas() {
     let isMobile = window.innerWidth <= 480;
     let pad = isMobile ? 16 : 40;
-    let maxH = isMobile ? Math.min(360, window.innerHeight * 0.42) : Math.min(800, window.innerHeight - 100);
+    let maxH = isMobile ? Math.min(220, window.innerHeight * 0.30) : Math.min(800, window.innerHeight - 100);
     c.width = Math.min(600, window.innerWidth - pad);
     c.height = maxH;
 }
