@@ -68,7 +68,7 @@ const shopItems = {
     ],
     abilities: [
         {id: 'auto', name: 'Auto Slice', desc: 'Doubles coins/sec each level', cost: 300, levelable: true},
-        {id: 'lucky', name: 'Lucky Cuts', desc: '20% 2x coins', cost: 800},
+        {id: 'lucky', name: 'Lucky Cuts', desc: '+10% 2x coins (15% total)', cost: 800},
         {id: 'golden', name: 'Golden Touch', desc: 'Rare golden 10x', cost: 1500}
     ],
     cosmetics: [
@@ -463,10 +463,11 @@ class Particle {
 
 // Coin popup: rises up, then falls
 class CoinPopup {
-    constructor(x, y, amount) {
+    constructor(x, y, amount, lucky) {
         this.x = x;
         this.y = y;
         this.text = '+' + amount + ' coins';
+        this.lucky = !!lucky;
         this.vy = -8;
         this.life = 1;
         this.decay = 0.022;
@@ -482,11 +483,25 @@ class CoinPopup {
         ctx.globalAlpha = this.life;
         ctx.font = '600 18px Outfit, system-ui, sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillStyle = '#ffc93c';
-        ctx.strokeStyle = 'rgba(0,0,0,.6)';
-        ctx.lineWidth = 2;
-        ctx.strokeText(this.text, this.x, this.y);
+        if (this.lucky) {
+            let hue = (time * 180) % 360;
+            let g = ctx.createLinearGradient(this.x - 80, this.y, this.x + 80, this.y);
+            g.addColorStop(0, `hsl(${hue}, 100%, 55%)`);
+            g.addColorStop(0.2, `hsl(${(hue + 60) % 360}, 100%, 55%)`);
+            g.addColorStop(0.4, `hsl(${(hue + 120) % 360}, 100%, 55%)`);
+            g.addColorStop(0.6, `hsl(${(hue + 180) % 360}, 100%, 55%)`);
+            g.addColorStop(0.8, `hsl(${(hue + 240) % 360}, 100%, 55%)`);
+            g.addColorStop(1, `hsl(${(hue + 300) % 360}, 100%, 55%)`);
+            ctx.fillStyle = g;
+            ctx.strokeStyle = 'rgba(0,0,0,.4)';
+            ctx.lineWidth = 1;
+        } else {
+            ctx.fillStyle = '#ffc93c';
+            ctx.strokeStyle = 'rgba(0,0,0,.6)';
+            ctx.lineWidth = 2;
+        }
         ctx.fillText(this.text, this.x, this.y);
+        ctx.strokeText(this.text, this.x, this.y);
         ctx.restore();
     }
 }
@@ -515,7 +530,6 @@ function calculateSlice(y, sliceMidX, sliceMidY) {
     let bottomPercent = 100 - topPercent;
     currentFood.leftPercent = Math.max(topPercent, bottomPercent);
     currentFood.rightPercent = Math.min(topPercent, bottomPercent);
-    showCutPopup(currentFood.leftPercent + '% / ' + currentFood.rightPercent + '%');
 
     let diff = Math.abs(50 - currentFood.rightPercent);
     let points = 0;
@@ -530,6 +544,7 @@ function calculateSlice(y, sliceMidX, sliceMidY) {
         coinEarn = 10;
         perfectSlices++;
         streak++;
+        coinEarn += streak * 10;
         document.getElementById('pf').classList.add('show');
         setTimeout(() => document.getElementById('pf').classList.remove('show'), 1000);
         playCutSound('perfect');
@@ -548,17 +563,17 @@ function calculateSlice(y, sliceMidX, sliceMidY) {
     } else if (diff <= 2) {
         points = 50;
         coinEarn = 5;
-        streak++;
+        streak = 0;
         playCutSound('good');
     } else if (diff <= 5) {
         points = 25;
         coinEarn = 3;
-        streak++;
+        streak = 0;
         playCutSound('okay');
     } else if (diff <= 10) {
         points = 10;
         coinEarn = 1;
-        streak = Math.floor(streak / 2);
+        streak = 0;
         playCutSound('okay');
     } else {
         points = 5;
@@ -574,19 +589,23 @@ function calculateSlice(y, sliceMidX, sliceMidY) {
         points *= 10;
     }
     
-    if (upgrades.lucky && Math.random() < 0.2) {
+    let lucky = Math.random() < (upgrades.lucky ? 0.15 : 0.05);
+    if (lucky) {
         coinEarn *= 2;
+        playLuckySound();
     }
+    
+    showCutPopup(currentFood.leftPercent + '% / ' + currentFood.rightPercent + '%', lucky);
     
     score += points + (streak * 5);
     coins += coinEarn;
     totalSlices++;
     updateUI();
-    showCoinsGain(coinEarn);
+    showCoinsGain(coinEarn, lucky);
     
-    let popX = effX;
+    let popX = effX + 85;
     let popY = effY - 20;
-    coinPopups.push(new CoinPopup(popX, popY, coinEarn));
+    coinPopups.push(new CoinPopup(popX, popY, coinEarn, lucky));
     
     let particleCount = upgrades.particles ? 20 : 12;
     for (let i = 0; i < particleCount; i++) {
@@ -598,21 +617,24 @@ function calculateSlice(y, sliceMidX, sliceMidY) {
 
 let cutPopupTimer;
 let coinsGainTimer;
-function showCoinsGain(amount) {
+function showCoinsGain(amount, lucky) {
     let el = document.getElementById('coins-gain');
     el.textContent = '+' + amount;
-    el.classList.remove('show');
+    el.classList.remove('show', 'lucky');
     el.offsetHeight;
+    if (lucky) el.classList.add('lucky');
     el.classList.add('show');
     clearTimeout(coinsGainTimer);
     coinsGainTimer = setTimeout(() => el.classList.remove('show'), 600);
 }
-function showCutPopup(text) {
+function showCutPopup(text, lucky) {
     let el = document.getElementById('cut-popup');
     el.textContent = text;
+    el.classList.remove('lucky');
+    if (lucky) el.classList.add('lucky');
     el.classList.add('show');
     clearTimeout(cutPopupTimer);
-    cutPopupTimer = setTimeout(() => el.classList.remove('show'), 1800);
+    cutPopupTimer = setTimeout(() => el.classList.remove('show', 'lucky'), 1800);
 }
 
 function updateUI() {
@@ -863,6 +885,31 @@ function playBuySound() {
 function playBuyFailSound() {
     if (!soundOn) return;
     playTone(165, 150, 'sine', 0.06);
+}
+
+function playLuckySound() {
+    if (!soundOn) return;
+    initAudio();
+    let t = audioCtx.currentTime;
+    let pattern = [
+        { f: 988, start: 0, dur: 0.08 },
+        { f: 988, start: 0.06, dur: 0.08 },
+        { f: 1318, start: 0.12, dur: 0.12 },
+        { f: 1046, start: 0.22, dur: 0.15 }
+    ];
+    pattern.forEach(({ f, start, dur }, i) => {
+        let osc = audioCtx.createOscillator();
+        let gain = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.value = f;
+        gain.gain.setValueAtTime(0, t + start);
+        gain.gain.linearRampToValueAtTime(0.12, t + start + 0.012);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + start + dur);
+        osc.connect(gain);
+        lofiChain(gain);
+        osc.start(t + start);
+        osc.stop(t + start + dur);
+    });
 }
 
 // Input handling

@@ -143,11 +143,27 @@ body {
     opacity: 0;
     transition: opacity .2s;
     letter-spacing: 0.05em;
+    margin-left: 14px;
 }
 
 #coins-gain.show {
     opacity: 1;
     animation: coinsGainPop .6s ease-out forwards;
+}
+
+#coins-gain.lucky {
+    background: linear-gradient(90deg, #f00, #f80, #ff0, #0f0, #0ff, #08f, #f0f, #f00);
+    background-size: 400% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    animation: coinsGainPop .6s ease-out forwards, rainbowText .25s linear infinite;
+}
+
+@keyframes rainbowText {
+    0% { background-position: 0% 50%; }
+    100% { background-position: 400% 50%; }
 }
 
 @keyframes coinsGainPop {
@@ -191,8 +207,23 @@ body {
     letter-spacing: 0.04em;
     border: 1px solid rgba(255,255,255,.08);
 }
+#cut-popup.lucky {
+    border: 2px solid transparent;
+    background: linear-gradient(rgba(45, 27, 61, 0.95), rgba(45, 27, 61, 0.95)) padding-box,
+        linear-gradient(90deg, #f00, #f80, #ff0, #0f0, #0ff, #08f, #f0f, #f00) border-box;
+    background-size: 100% 100%, 400% 100%;
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+}
 #cut-popup.show {
     animation: cutPopup 1.8s ease-out forwards;
+}
+#cut-popup.show.lucky {
+    animation: cutPopup 1.8s ease-out forwards, rainbowCutBorder 0.5s linear infinite;
+}
+@keyframes rainbowCutBorder {
+    0% { background-position: 0% 50%, 0% 50%; }
+    100% { background-position: 0% 50%, 400% 50%; }
 }
 @keyframes cutPopup {
     0% { opacity: 0; transform: translate(-50%, -50%) scale(0.92); }
@@ -436,25 +467,32 @@ button:disabled {
 
 .shop-close-x {
     position: absolute;
-    top: 8px;
-    right: 8px;
-    width: 36px;
-    height: 36px;
-    min-width: 36px;
-    min-height: 36px;
+    top: 4px;
+    right: 4px;
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+    min-height: 48px;
     padding: 0;
-    font-size: 24px;
+    margin: 0;
+    font-size: 28px;
     line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     color: rgba(232,213,183,.8);
-    background: transparent;
-    border: none;
+    background: rgba(255,255,255,.06);
+    border: 2px solid rgba(232,213,183,.25);
     cursor: pointer;
-    border-radius: 8px;
+    border-radius: 12px;
+    z-index: 10;
+    touch-action: manipulation;
 }
 
 .shop-close-x:hover {
     color: #ffd166;
-    background: rgba(255,255,255,.08);
+    background: rgba(255,255,255,.12);
+    border-color: rgba(232,213,183,.4);
 }
 
 #shop-content h2 {
