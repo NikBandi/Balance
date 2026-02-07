@@ -5,7 +5,7 @@ const ctx = c.getContext('2d');
 function resizeCanvas() {
     let isMobile = window.innerWidth <= 480;
     let pad = isMobile ? 16 : 40;
-    let maxH = isMobile ? Math.min(280, window.innerHeight * 0.34) : Math.min(800, window.innerHeight - 100);
+    let maxH = isMobile ? Math.min(600, Math.max(400, window.innerHeight * 0.95)) : Math.min(800, window.innerHeight - 100);
     c.width = Math.min(600, window.innerWidth - pad);
     c.height = maxH;
 }
@@ -87,7 +87,8 @@ const shopItems = {
         {id: 'trail', name: 'Sparkle Trail', desc: 'Glitter path', cost: 600}
     ],
     special: [
-        {id: 'scotty', name: 'Scotty', desc: '+10 coins/sec', cost: 1000, saleCost: 500, emoji: '🐕'}
+        {id: 'scotty', name: 'Scotty', desc: '+10 coins/sec', cost: 1000, saleCost: 500, emoji: '🐕'},
+        {id: 'rebirth', name: 'Rebirth', desc: 'Reset score for permanent 2x multiplier', cost: 0, rebirth: true, emoji: '✨'}
     ]
 };
 
@@ -488,6 +489,7 @@ class CoinPopup {
         this.vy = -8;
         this.life = 1;
         this.decay = 0.022;
+        this.phase = Math.random() * Math.PI * 2;
     }
     update() {
         this.vy += 0.4;
@@ -497,7 +499,8 @@ class CoinPopup {
     }
     draw() {
         ctx.save();
-        ctx.globalAlpha = this.life;
+        let flicker = 0.92 + 0.08 * Math.sin(time * 12 + this.phase) * Math.sin(time * 4.7 + this.phase * 0.7);
+        ctx.globalAlpha = Math.max(0, this.life * flicker);
         ctx.font = '600 18px Outfit, system-ui, sans-serif';
         ctx.textAlign = 'center';
         if (this.lucky) {
@@ -645,14 +648,6 @@ function showCutPopup(text) {
 function updateUI() {
     document.getElementById('s').textContent = '✂ ' + score;
     document.getElementById('coins').textContent = '💰 ' + coins + ' coins';
-    let rb = document.getElementById('rebirth-btn');
-    if (rb) {
-        let cost = getRebirthCost();
-        let mult = getRebirthMultiplier();
-        rb.textContent = rebirthCount > 0 ? '✨ rebirth (' + cost + ') ×' + mult : '✨ rebirth (' + cost + ')';
-        rb.disabled = score < cost;
-        rb.title = score >= cost ? 'Reset score for +2x base multiplier' : 'Need ' + cost + ' score';
-    }
     
     let accuracy = totalSlices > 0 ? Math.round((perfectSlices / totalSlices) * 100) : 100;
     let label = 'Perfect';
@@ -972,6 +967,7 @@ function rebirth() {
     if (score < cost) return;
     rebirthCount++;
     score = 0;
+    coins = 0;
     streak = 0;
     totalSlices = 0;
     perfectSlices = 0;
@@ -982,7 +978,6 @@ function rebirth() {
     upgrades.auto = 0;
     upgrades.lucky = false;
     upgrades.golden = false;
-    upgrades.scotty = false;
     scoreMultiplier = 1;
     setTimeout(spawnFood, 100);
     updateUI();
@@ -1028,6 +1023,26 @@ function updateShop() {
     categories.forEach(category => {
         let html = '';
         shopItems[category].forEach(item => {
+            if (item.rebirth) {
+                let cost = getRebirthCost();
+                let mult = getRebirthMultiplier();
+                let canBuy = score >= cost;
+                let display = rebirthCount > 0 ? 'Current: ×' + mult + ' multiplier' : item.desc;
+                let iconHtml = item.emoji ? `<span class="upgrade-emoji">${item.emoji}</span>` : '';
+                let priceHtml = `<span class="price">${cost} score</span>`;
+                html += `
+                    <div class="upgrade ${item.emoji ? 'upgrade-with-img' : ''}">
+                        ${iconHtml}
+                        <div>
+                            <h3>${item.name}${rebirthCount > 0 ? ' (×' + mult + ')' : ''}</h3>
+                            <p>${display}</p>
+                        </div>
+                        ${priceHtml}
+                        <button class="buy-btn" onclick="rebirth()" ${!canBuy ? 'disabled' : ''}>rebirth</button>
+                    </div>
+                `;
+                return;
+            }
             let bought = item.levelable ? false : upgrades[item.id];
             let cost = item.id === 'auto' ? getAutoCost() : (item.saleCost != null && !bought ? item.saleCost : item.cost);
             let canBuy = item.levelable
@@ -1156,7 +1171,7 @@ c.addEventListener('touchend', e => {
 document.getElementById('m').addEventListener('click', function() {
     unlockAudio();
     soundOn = !soundOn;
-    this.textContent = soundOn ? 'sound: on' : 'sound: off';
+    this.textContent = soundOn ? 'Sound: on' : 'Sound: off';
 });
 
 document.getElementById('shop-btn').addEventListener('click', () => {
@@ -1166,8 +1181,6 @@ document.getElementById('shop-btn').addEventListener('click', () => {
     updateShop();
     setTimeout(() => shop.classList.remove('just-opened'), 500);
 });
-
-document.getElementById('rebirth-btn').addEventListener('click', rebirth);
 
 document.getElementById('close-shop').addEventListener('click', () => {
     document.getElementById('shop').classList.remove('show');
@@ -1180,8 +1193,7 @@ document.getElementById('shop').addEventListener('click', (e) => {
     if (e.target.id === 'shop') document.getElementById('shop').classList.remove('show');
 });
 
-document.getElementById('instructions-link').addEventListener('click', (e) => {
-    e.preventDefault();
+document.getElementById('instructions-btn').addEventListener('click', () => {
     unlockAudio();
     document.getElementById('instructions-overlay').classList.add('show');
 });
