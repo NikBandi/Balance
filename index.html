@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>balance</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="leaves" aria-hidden="true">
+        <span class="leaf">🍃</span>
+        <span class="leaf">🍂</span>
+        <span class="leaf">🍃</span>
+        <span class="leaf">🍂</span>
+        <span class="leaf">🍃</span>
+        <span class="leaf">🍂</span>
+    </div>
+    <div class="game-panel">
+        <div class="panel-square">
+            <div class="panel-overlay" aria-hidden="true"></div>
+            <canvas id="c"></canvas>
+            <div id="ui">
+                <div id="s">✂ 0</div>
+                <div id="coins">💰 0 coins</div>
+                <div id="a">Perfect</div>
+                <div id="t">Streak: 0</div>
+            </div>
+        </div>
+        <div id="h">Swipe to slice · Buy upgrades · Get rich</div>
+    </div>
+    
+    <div id="cut-popup"></div>
+    <div id="pf">Perfect!</div>
+    
+    <div id="menu">
+        <button id="shop-btn">🛒 shop</button>
+        <button id="m">sound: on</button>
+    </div>
+    
+    <div id="shop">
+        <div id="shop-content">
+            <h2>Shop</h2>
+            <div class="category">💰 score multipliers</div>
+            <div id="upgrades"></div>
+            <div class="category">✨ special abilities</div>
+            <div id="abilities"></div>
+            <div class="category">🎨 cosmetics</div>
+            <div id="cosmetics"></div>
+            <button id="close-shop">close shop</button>
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
