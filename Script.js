@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Canvas setup
 const c = document.getElementById('c');
 const ctx = c.getContext('2d');
