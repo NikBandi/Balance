@@ -19,7 +19,7 @@ function closeOverlay(id) { document.getElementById(id).classList.remove('show')
 const h = c.height;
 
 let score = 0;
-let coins = 0;
+let coins = 100;
 let streak = 0;
 let totalSlices = 0;
 let perfectSlices = 0;
@@ -49,7 +49,7 @@ let scoreMultiplier = 1;
 let rebirthCount = 0;
 
 function getRebirthCost() {
-    return 10000 * Math.pow(2, rebirthCount);
+    return 5000 * Math.pow(2, rebirthCount);
 }
 
 function getRebirthMultiplier() {
@@ -69,22 +69,22 @@ const foods = [
 
 const shopItems = {
     upgrades: [
-        {id: 'mult1', name: 'Sharp Knife', desc: '2x score', cost: 100, mult: 2},
+        {id: 'mult1', name: 'Sharp Knife', desc: '2x score', cost: 150, mult: 2},
         {id: 'mult2', name: 'Diamond Blade', desc: '3x score', cost: 500, mult: 3, req: 'mult1'},
         {id: 'mult3', name: 'Laser Cutter', desc: '5x score', cost: 2000, mult: 5, req: 'mult2'}
     ],
     abilities: [
         {id: 'auto', name: 'Auto Slice', desc: '2x coins/sec/level', cost: 300, levelable: true},
-        {id: 'lucky', name: 'Lucky Cuts', desc: '20% 2x coins', cost: 800},
-        {id: 'golden', name: 'Golden Touch', desc: 'Rare 10x', cost: 1500}
+        {id: 'lucky', name: 'Lucky Cuts', desc: '35% 2x coins', cost: 600},
+        {id: 'golden', name: 'Golden Touch', desc: 'Rare 10x', cost: 1200}
     ],
     cosmetics: [
-        {id: 'rainbow', name: 'Rainbow Trail', desc: 'Color trail', cost: 250},
-        {id: 'particles', name: 'Particle Boost', desc: '2x particles', cost: 400},
-        {id: 'trail', name: 'Sparkle Trail', desc: 'Glitter path', cost: 600}
+        {id: 'rainbow', name: 'Rainbow Trail', desc: 'Color trail', cost: 200},
+        {id: 'particles', name: 'Particle Boost', desc: '2x particles', cost: 350},
+        {id: 'trail', name: 'Sparkle Trail', desc: 'Glitter path', cost: 500}
     ],
     special: [
-        {id: 'scotty', name: 'Scotty', desc: '+10 coins/sec', cost: 1000, saleCost: 500, emoji: '🐕'},
+        {id: 'scotty', name: 'Scotty', desc: '+20 coins/sec', cost: 800, saleCost: 400, emoji: '🐕'},
         {id: 'rebirth', name: 'Rebirth', desc: 'Reset for 2x mult', cost: 0, rebirth: true, emoji: '✨'}
     ]
 };
@@ -94,7 +94,7 @@ class Food {
         let f = foods[Math.floor(Math.random() * foods.length)];
         Object.assign(this, f);
         
-        this.golden = upgrades.golden && Math.random() < 0.1;
+        this.golden = upgrades.golden && Math.random() < 0.18;
         if (this.golden) {
             this.c1 = '#ffd700';
             this.c2 = '#ffed4e';
@@ -120,8 +120,8 @@ class Food {
         if (!this.sliced) {
             let spinBonus = Math.min(score / 3000, 0.12);
             this.wobble += this.wobbleSpeed + spinBonus;
-            if (score >= 10000) {
-                let baseSpeed = 1.2 + Math.floor((score - 10000) / 1000) * 0.25;
+            if (score >= 15000) {
+                let baseSpeed = 1.2 + Math.floor((score - 15000) / 1000) * 0.25;
                 let spd = baseSpeed * this.speedMult;
                 if (this.vx === 0 && this.vy === 0) {
                     let angle = Math.random() * Math.PI * 2;
@@ -499,11 +499,11 @@ function calculateSlice(y, sliceMidX, sliceMidY) {
 
     let diff = Math.abs(50 - currentFood.rightPercent);
     const tiers = [
-        [0, 100, 10, 'perfect', 1, 1],
-        [2, 50, 5, 'good', 1, 0],
-        [5, 25, 3, 'okay', 1, 0],
-        [10, 10, 1, 'okay', 0.5, 0],
-        [99, 5, 1, 'bad', 0, 0]
+        [0, 400, 60, 'perfect', 1, 1],
+        [5, 150, 30, 'good', 1, 0],
+        [10, 75, 16, 'okay', 1, 0],
+        [20, 25, 8, 'okay', 1, 0],
+        [99, 15, 4, 'bad', 0, 0]
     ];
     let tier = tiers.find(([d]) => diff <= d) || tiers[4];
     let [, points, coinEarn, sound, streakMult, perfect] = tier;
@@ -538,10 +538,10 @@ function calculateSlice(y, sliceMidX, sliceMidY) {
         points *= 10;
     }
     
-    let lucky = upgrades.lucky && Math.random() < 0.2;
+    let lucky = upgrades.lucky && Math.random() < 0.35;
     if (lucky) coinEarn *= 2;
     
-    score += points + (streak * 5);
+    score += points + (streak * 12);
     coins += coinEarn;
     totalSlices++;
     updateUI();
@@ -827,8 +827,8 @@ function handleSliceEnd() {
 
             setTimeout(() => {
                 currentFood = null;
-                setTimeout(spawnFood, 300);
-            }, 2000);
+                setTimeout(spawnFood, 200);
+            }, 800);
         }
     }
 
@@ -864,8 +864,8 @@ function getAutoCost() {
 }
 
 function getAutoCoinsPerSec() {
-    let auto = upgrades.auto > 0 ? Math.pow(2, upgrades.auto - 1) : 0;
-    let scotty = upgrades.scotty ? 10 : 0;
+    let auto = upgrades.auto > 0 ? Math.pow(2, upgrades.auto) : 0;
+    let scotty = upgrades.scotty ? 20 : 0;
     return auto + scotty;
 }
 
@@ -913,7 +913,7 @@ function updateShop() {
                 : !bought && coins >= cost && (!item.req || upgrades[item.req]);
             let display = item.id === 'auto'
                 ? (upgrades.auto > 0 ? `Lv.${upgrades.auto} · ${getAutoCoinsPerSec()} coins/sec` : item.desc)
-                : (item.id === 'scotty' && bought ? '10 coins/sec' : item.desc);
+                : (item.id === 'scotty' && bought ? '20 coins/sec' : item.desc);
             let iconHtml = item.emoji ? `<span class="upgrade-emoji">${item.emoji}</span>` : '';
             let priceHtml = item.saleCost != null && !bought
                 ? `<span class="price price-sale"><span class="sale-price">${item.saleCost} coins</span><br><span class="original-price"><s>${item.cost}</s></span></span>`
