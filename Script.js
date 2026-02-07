@@ -17,6 +17,7 @@ let sliceStart = null;
 let sliceEnd = null;
 let particles = [];
 let time = 0;
+let perfectEffect = { active: false, x: 0, y: 0, t: 0 };
 
 // Upgrades
 let upgrades = {
@@ -43,7 +44,6 @@ const foods = [
     {name: 'cake', shape: 0, c1: '#ffb6c1', c2: '#fff0f5', c3: '#ff69b4', w: 120, h: 100},
     {name: 'carrot', shape: 5, c1: '#ff7f27', c2: '#ffa500', c3: '#228b22', w: 50, h: 140},
     {name: 'fish', shape: 6, c1: '#87ceeb', c2: '#ffb6c1', c3: '#4682b4', w: 160, h: 80},
-    {name: 'pizza', shape: 4, c1: '#ffd700', c2: '#ff6347', c3: '#ffed4e', w: 150, h: 130},
     {name: 'donut', shape: 3, c1: '#ff9ff3', c2: '#ffeaa7', c3: '#ff1493', r: 85},
     {name: 'avocado', shape: 1, c1: '#6b8e23', c2: '#d4e157', c3: '#8b4513', w: 90, h: 120}
 ];
@@ -166,46 +166,150 @@ class Food {
     
     drawShape() {
         if (this.shape === 0) {
-            // Rectangle
-            ctx.fillStyle = this.c1;
-            ctx.fillRect(-this.w/2, -this.h/2, this.w, this.h);
-            ctx.strokeStyle = this.c3;
-            ctx.lineWidth = 4;
-            ctx.strokeRect(-this.w/2, -this.h/2, this.w, this.h);
+            if (this.name === 'bread') {
+                ctx.fillStyle = this.c2;
+                let r = 8, x = -this.w/2, y = -this.h/2;
+                ctx.beginPath();
+                ctx.moveTo(x + r, y); ctx.lineTo(x + this.w - r, y);
+                ctx.quadraticCurveTo(x + this.w, y, x + this.w, y + r);
+                ctx.lineTo(x + this.w, y + this.h - r);
+                ctx.quadraticCurveTo(x + this.w, y + this.h, x + this.w - r, y + this.h);
+                ctx.lineTo(x + r, y + this.h);
+                ctx.quadraticCurveTo(x, y + this.h, x, y + this.h - r);
+                ctx.lineTo(x, y + r);
+                ctx.quadraticCurveTo(x, y, x + r, y);
+                ctx.fill();
+                ctx.strokeStyle = this.c3;
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                ctx.fillStyle = 'rgba(139,115,85,0.15)';
+                for (let i = 0; i < 4; i++) ctx.fillRect(-this.w/2 + 12 + i*35, -this.h/2 + 8, 18, 4);
+            } else if (this.name === 'cake') {
+                ctx.fillStyle = this.c1;
+                let r = 6, x = -this.w/2, y = -this.h/2;
+                ctx.beginPath();
+                ctx.moveTo(x + r, y); ctx.lineTo(x + this.w - r, y);
+                ctx.quadraticCurveTo(x + this.w, y, x + this.w, y + r);
+                ctx.lineTo(x + this.w, y + this.h - r);
+                ctx.quadraticCurveTo(x + this.w, y + this.h, x + this.w - r, y + this.h);
+                ctx.lineTo(x + r, y + this.h);
+                ctx.quadraticCurveTo(x, y + this.h, x, y + this.h - r);
+                ctx.lineTo(x, y + r);
+                ctx.quadraticCurveTo(x, y, x + r, y);
+                ctx.fill();
+                ctx.fillStyle = this.c3;
+                ctx.beginPath();
+                ctx.ellipse(0, -this.h/2 - 2, this.w/2 + 4, 10, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#ff69b4';
+                ctx.beginPath();
+                ctx.arc(0, -this.h/2 - 5, 8, 0, Math.PI * 2);
+                ctx.fill();
+            } else {
+                ctx.fillStyle = this.c1;
+                ctx.fillRect(-this.w/2, -this.h/2, this.w, this.h);
+                ctx.strokeStyle = this.c3;
+                ctx.lineWidth = 4;
+                ctx.strokeRect(-this.w/2, -this.h/2, this.w, this.h);
+            }
         } else if (this.shape === 1) {
-            // Oval
             ctx.fillStyle = this.c1;
             ctx.beginPath();
             ctx.ellipse(0, 0, this.w/2, this.h/2, 0, 0, Math.PI * 2);
             ctx.fill();
+            if (this.name === 'baguette') {
+                ctx.strokeStyle = 'rgba(139,105,20,0.6)';
+                ctx.lineWidth = 1;
+                for (let i = -2; i <= 2; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(-this.w/2 + 10, i * 12);
+                    ctx.lineTo(this.w/2 - 10, i * 12);
+                    ctx.stroke();
+                }
+            } else if (this.name === 'avocado') {
+                ctx.fillStyle = this.c1;
+                ctx.beginPath();
+                ctx.ellipse(0, 0, this.w/2, this.h/2, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = 'rgba(255,255,255,0.3)';
+                ctx.beginPath();
+                ctx.arc(-12, -18, 12, 0, Math.PI * 2);
+                ctx.fill();
+            }
             ctx.strokeStyle = this.c3;
-            ctx.lineWidth = 3;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, this.w/2, this.h/2, 0, 0, Math.PI * 2);
             ctx.stroke();
         } else if (this.shape === 2) {
-            // Egg
             ctx.fillStyle = this.c1;
             ctx.beginPath();
             ctx.moveTo(0, -this.h/2);
             ctx.bezierCurveTo(this.w/2, -this.h/2, this.w/2, this.h/4, 0, this.h/2);
             ctx.bezierCurveTo(-this.w/2, this.h/4, -this.w/2, -this.h/2, 0, -this.h/2);
             ctx.fill();
+            ctx.strokeStyle = 'rgba(0,0,0,0.08)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
         } else if (this.shape === 3) {
-            // Circle
-            ctx.fillStyle = this.c1;
-            ctx.beginPath();
-            ctx.arc(0, 0, this.r, 0, Math.PI * 2);
-            ctx.fill();
+            if (this.name === 'melon') {
+                ctx.fillStyle = this.c2;
+                ctx.beginPath();
+                ctx.arc(0, 0, this.r, 0, Math.PI * 2);
+                ctx.fill();
+                for (let i = 0; i < 14; i++) {
+                    ctx.fillStyle = i % 2 ? '#2d5016' : '#4a7c23';
+                    ctx.beginPath();
+                    ctx.moveTo(0, 0);
+                    ctx.arc(0, 0, this.r, (i - 0.5) * Math.PI / 7, (i + 0.5) * Math.PI / 7);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+                ctx.fillStyle = this.c2;
+                ctx.beginPath();
+                ctx.arc(0, 0, this.r * 0.78, 0, Math.PI * 2);
+                ctx.fill();
+            } else if (this.name === 'donut') {
+                ctx.fillStyle = this.c1;
+                ctx.beginPath();
+                ctx.arc(0, 0, this.r, 0, Math.PI * 2);
+                ctx.arc(0, 0, this.r * 0.35, 0, Math.PI * 2, true);
+                ctx.fill('evenodd');
+                ctx.fillStyle = this.c3;
+                ctx.beginPath();
+                ctx.ellipse(-this.r*0.5, -this.r*0.3, 8, 12, 0.3, 0, Math.PI * 2);
+                ctx.fill();
+            } else {
+                ctx.fillStyle = this.c1;
+                ctx.beginPath();
+                ctx.arc(0, 0, this.r, 0, Math.PI * 2);
+                ctx.fill();
+            }
         } else if (this.shape === 4) {
-            // Triangle
-            ctx.fillStyle = this.c1;
-            ctx.beginPath();
-            ctx.moveTo(0, -this.h/2);
-            ctx.lineTo(this.w/2, this.h/2);
-            ctx.lineTo(-this.w/2, this.h/2);
-            ctx.closePath();
-            ctx.fill();
+            if (this.name === 'cheese') {
+                ctx.fillStyle = this.c1;
+                ctx.beginPath();
+                ctx.moveTo(0, -this.h/2);
+                ctx.lineTo(this.w/2, this.h/2);
+                ctx.lineTo(-this.w/2, this.h/2);
+                ctx.closePath();
+                ctx.fill();
+                ctx.fillStyle = '#c9a020';
+                ctx.beginPath();
+                ctx.arc(-20, 10, 12, 0, Math.PI * 2);
+                ctx.arc(25, -15, 10, 0, Math.PI * 2);
+                ctx.arc(-10, -25, 8, 0, Math.PI * 2);
+                ctx.fill();
+            } else {
+                ctx.fillStyle = this.c1;
+                ctx.beginPath();
+                ctx.moveTo(0, -this.h/2);
+                ctx.lineTo(this.w/2, this.h/2);
+                ctx.lineTo(-this.w/2, this.h/2);
+                ctx.closePath();
+                ctx.fill();
+            }
         } else if (this.shape === 5) {
-            // Carrot
             ctx.fillStyle = this.c1;
             ctx.beginPath();
             ctx.moveTo(0, -this.h/2);
@@ -213,38 +317,62 @@ class Food {
             ctx.lineTo(-this.w/2, this.h/2);
             ctx.closePath();
             ctx.fill();
+            ctx.strokeStyle = 'rgba(230,100,0,0.4)';
+            ctx.lineWidth = 1;
+            for (let i = 1; i < 4; i++) {
+                ctx.beginPath();
+                ctx.moveTo(-this.w/2 + i*8, -this.h/2 + i*25);
+                ctx.lineTo(this.w/2 - i*8, -this.h/2 + i*25);
+                ctx.stroke();
+            }
             ctx.fillStyle = this.c3;
             for (let i = 0; i < 3; i++) {
                 ctx.save();
-                ctx.translate((i - 1) * 10, -this.h/2);
-                ctx.fillRect(-3, -20, 6, 25);
+                ctx.translate((i - 1) * 12, -this.h/2 - 8);
+                ctx.beginPath();
+                ctx.ellipse(0, 0, 4, 18, 0, 0, Math.PI * 2);
+                ctx.fill();
                 ctx.restore();
             }
         } else if (this.shape === 6) {
-            // Fish
             ctx.fillStyle = this.c1;
             ctx.beginPath();
             ctx.ellipse(0, 0, this.w/2, this.h/2, 0, 0, Math.PI * 2);
             ctx.fill();
+            ctx.fillStyle = 'rgba(70,130,180,0.3)';
+            for (let i = 0; i < 6; i++) {
+                ctx.beginPath();
+                ctx.ellipse(-this.w/4 + i*12, (i % 2) * 8 - 4, 8, 4, 0.5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.fillStyle = this.c1;
             ctx.beginPath();
             ctx.moveTo(this.w/2, 0);
-            ctx.lineTo(this.w * 0.7, -this.h * 0.4);
-            ctx.lineTo(this.w * 0.7, this.h * 0.4);
+            ctx.lineTo(this.w * 0.75, -this.h * 0.35);
+            ctx.lineTo(this.w * 0.75, this.h * 0.35);
             ctx.closePath();
             ctx.fill();
+            ctx.strokeStyle = this.c3;
+            ctx.lineWidth = 1;
+            ctx.stroke();
             ctx.fillStyle = '#000';
             ctx.beginPath();
-            ctx.arc(-this.w * 0.3, -this.h * 0.2, 5, 0, Math.PI * 2);
+            ctx.arc(-this.w * 0.25, -this.h * 0.15, 6, 0, Math.PI * 2);
             ctx.fill();
         }
     }
     
     drawDetails(sliceY) {
         if (this.shape === 2 && sliceY > -10 && sliceY < 10) {
-            // Egg yolk
             ctx.fillStyle = this.c3;
             ctx.beginPath();
             ctx.arc(0, sliceY, 20, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        if (this.name === 'avocado' && sliceY > -25 && sliceY < 25) {
+            ctx.fillStyle = this.c3;
+            ctx.beginPath();
+            ctx.arc(0, sliceY, 18, 0, Math.PI * 2);
             ctx.fill();
         }
     }
@@ -313,6 +441,7 @@ function calculateSlice(y) {
     let points = 0;
     let coinEarn = 0;
     
+    playWhoosh();
     if (diff === 0) {
         points = 100;
         coinEarn = 10;
@@ -320,27 +449,39 @@ function calculateSlice(y) {
         streak++;
         document.getElementById('pf').classList.add('show');
         setTimeout(() => document.getElementById('pf').classList.remove('show'), 1000);
-        playTone(800, 150);
+        playCutSound('perfect');
+        perfectEffect = { active: true, x: currentFood.x, y: currentFood.y + relY, t: 0 };
+        for (let i = 0; i < 24; i++) {
+            let a = (i / 24) * Math.PI * 2;
+            let px = currentFood.x + Math.cos(a) * 25;
+            let py = currentFood.y + relY + Math.sin(a) * 25;
+            let p = new Particle(px, py, '#ffd700');
+            p.vx = Math.cos(a) * 8;
+            p.vy = Math.sin(a) * 8 - 3;
+            p.size = 3 + Math.random() * 4;
+            p.decay = 0.02;
+            particles.push(p);
+        }
     } else if (diff <= 2) {
         points = 50;
         coinEarn = 5;
         streak++;
-        playTone(600, 100);
+        playCutSound('good');
     } else if (diff <= 5) {
         points = 25;
         coinEarn = 3;
         streak++;
-        playTone(500, 100);
+        playCutSound('okay');
     } else if (diff <= 10) {
         points = 10;
         coinEarn = 1;
         streak = Math.floor(streak / 2);
-        playTone(400, 100);
+        playCutSound('okay');
     } else {
         points = 5;
         coinEarn = 1;
         streak = 0;
-        playTone(300, 100);
+        playCutSound('bad');
     }
     
     points *= scoreMultiplier;
@@ -408,6 +549,23 @@ function draw() {
         return alive;
     });
     
+    if (perfectEffect.active) {
+        perfectEffect.t++;
+        if (perfectEffect.t < 50) {
+            let prog = perfectEffect.t / 50;
+            ctx.strokeStyle = `rgba(255,215,0,${1 - prog})`;
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(perfectEffect.x, perfectEffect.y, prog * 80, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.strokeStyle = `rgba(255,255,200,${0.7 - prog * 0.7})`;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(perfectEffect.x, perfectEffect.y, prog * 55 + 5, 0, Math.PI * 2);
+            ctx.stroke();
+        } else perfectEffect.active = false;
+    }
+    
     if (slicing && sliceStart && sliceEnd) {
         let gradient;
         
@@ -444,30 +602,141 @@ function draw() {
     requestAnimationFrame(draw);
 }
 
-// Audio
+// Audio - lofi / satisfying
 let audioCtx;
-function playTone(freq, duration) {
-    if (!soundOn) return;
+function initAudio() {
     if (!audioCtx) audioCtx = new (AudioContext || webkitAudioContext)();
-    
+}
+
+function lofiChain(node) {
+    let lp = audioCtx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 2400;
+    lp.Q.value = 0.7;
+    node.connect(lp);
+    lp.connect(audioCtx.destination);
+}
+
+function playTone(freq, duration, type = 'sine', vol = 0.12) {
+    if (!soundOn) return;
+    initAudio();
+    let t = audioCtx.currentTime;
     let osc = audioCtx.createOscillator();
     let gain = audioCtx.createGain();
-    let filter = audioCtx.createBiquadFilter();
-    
-    filter.type = 'lowpass';
-    filter.frequency.value = freq * 2;
-    
-    osc.connect(filter);
-    filter.connect(gain);
-    gain.connect(audioCtx.destination);
-    
+    osc.type = type;
     osc.frequency.value = freq;
-    osc.type = 'sine';
-    gain.gain.value = 0.08;
-    
-    osc.start();
-    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration / 1000);
-    osc.stop(audioCtx.currentTime + duration / 1000);
+    gain.gain.setValueAtTime(0, t);
+    gain.gain.linearRampToValueAtTime(vol, t + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + duration / 1000);
+    osc.connect(gain);
+    lofiChain(gain);
+    osc.start(t);
+    osc.stop(t + duration / 1000);
+}
+
+function playCutSound(quality) {
+    if (!soundOn) return;
+    initAudio();
+    let t = audioCtx.currentTime;
+    if (quality === 'perfect') {
+        [261, 330, 392].forEach((f, i) => {
+            let o = audioCtx.createOscillator();
+            let g = audioCtx.createGain();
+            o.type = 'sine';
+            o.frequency.value = f + (Math.random() - 0.5) * 4;
+            g.gain.setValueAtTime(0, t);
+            g.gain.linearRampToValueAtTime(0.07, t + 0.03);
+            g.gain.exponentialRampToValueAtTime(0.001, t + 0.35 + i * 0.08);
+            o.connect(g);
+            lofiChain(g);
+            o.start(t + i * 0.06);
+            o.stop(t + 0.5);
+        });
+    } else if (quality === 'good') {
+        let o = audioCtx.createOscillator();
+        let g = audioCtx.createGain();
+        o.type = 'sine';
+        o.frequency.value = 330;
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(0.1, t + 0.025);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+        o.connect(g);
+        lofiChain(g);
+        o.start(t);
+        o.stop(t + 0.2);
+    } else if (quality === 'okay') {
+        let o = audioCtx.createOscillator();
+        let g = audioCtx.createGain();
+        o.type = 'sine';
+        o.frequency.value = 240;
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(0.06, t + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+        o.connect(g);
+        lofiChain(g);
+        o.start(t);
+        o.stop(t + 0.14);
+    } else {
+        let o = audioCtx.createOscillator();
+        let g = audioCtx.createGain();
+        o.type = 'sine';
+        o.frequency.value = 165;
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(0.05, t + 0.015);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+        o.connect(g);
+        lofiChain(g);
+        o.start(t);
+        o.stop(t + 0.12);
+    }
+}
+
+function playWhoosh() {
+    if (!soundOn) return;
+    initAudio();
+    let t = audioCtx.currentTime;
+    let buf = audioCtx.createBuffer(1, 4410, 44100);
+    let d = buf.getChannelData(0);
+    for (let i = 0; i < 4410; i++) {
+        let env = Math.pow(1 - i / 4410, 0.8);
+        d[i] = (Math.random() * 2 - 1) * env * (0.3 + 0.7 * Math.pow(1 - i / 4410, 2));
+    }
+    let src = audioCtx.createBufferSource();
+    src.buffer = buf;
+    let lp = audioCtx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 800;
+    lp.Q.value = 0.5;
+    let g = audioCtx.createGain();
+    g.gain.setValueAtTime(0.08, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+    src.connect(lp);
+    lp.connect(g);
+    g.connect(audioCtx.destination);
+    src.start(t);
+    src.stop(t + 0.1);
+    let thud = audioCtx.createOscillator();
+    let thudG = audioCtx.createGain();
+    thud.type = 'sine';
+    thud.frequency.value = 120;
+    thudG.gain.setValueAtTime(0, t);
+    thudG.gain.linearRampToValueAtTime(0.04, t + 0.005);
+    thudG.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
+    thud.connect(thudG);
+    lofiChain(thudG);
+    thud.start(t);
+    thud.stop(t + 0.05);
+}
+
+function playBuySound() {
+    if (!soundOn) return;
+    playTone(440, 100, 'sine', 0.11);
+    setTimeout(() => { if (soundOn) playTone(554, 120, 'sine', 0.09); }, 100);
+}
+
+function playBuyFailSound() {
+    if (!soundOn) return;
+    playTone(165, 150, 'sine', 0.06);
 }
 
 // Input handling
@@ -543,10 +812,10 @@ function buyUpgrade(id, cost) {
         if (id === 'mult3') scoreMultiplier = 5;
         
         updateUI();
-        playTone(600, 100);
+        playBuySound();
         save();
     } else {
-        playTone(200, 100);
+        playBuyFailSound();
     }
 }
 
